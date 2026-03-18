@@ -3,44 +3,72 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TaskFlow — Personal Task Manager</title>
+<title>TaskFlow</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<!-- =====================================================
+     FIREBASE CONFIG — REPLACE THE BLOCK BELOW
+     ===================================================== -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, doc, getDocs, getDoc, addDoc, updateDoc, deleteDoc,
+  query, where, orderBy, onSnapshot, setDoc, serverTimestamp, Timestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ── PASTE YOUR FIREBASE CONFIG HERE ──────────────────
+const firebaseConfig = {
+  apiKey:            "AIzaSyD6gU2n2tOwHJnxuKQapWDHifCwbAf8xLQ",
+  authDomain:        "taskflow-riddhi.firebaseapp.com",
+  projectId:         "taskflow-riddhi",
+  storageBucket:     "taskflow-riddhi.firebasestorage.app",
+  messagingSenderId: "685127651002",
+  appId:             "1:685127651002:web:dfdc20eddf5a1ffeacfc83"
+};
+// ─────────────────────────────────────────────────────
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+// ── ADMIN UID — fill in after first login ─────────────
+// After you sign up for the first time, open browser console,
+// type: firebase.auth().currentUser.uid  and paste it below.
+const ADMIN_UID = "REPLACE_AFTER_FIRST_LOGIN";
+// ─────────────────────────────────────────────────────
+
+// ── SHARE TOKEN (any random string you choose) ────────
+const SHARE_TOKEN = "riddhi2024"; // e.g. "arjun2024"
+// ─────────────────────────────────────────────────────
+
+// expose to window so the non-module scripts can use them
+window._fb = { auth, db, ADMIN_UID, SHARE_TOKEN,
+  signInWithEmailAndPassword, createUserWithEmailAndPassword,
+  signOut, onAuthStateChanged,
+  collection, doc, getDocs, getDoc, addDoc, updateDoc, deleteDoc,
+  query, where, orderBy, onSnapshot, setDoc, serverTimestamp, Timestamp };
+</script>
+
 <style>
-:root {
-  --bg: #0e0f14;
-  --bg2: #15161d;
-  --bg3: #1c1d27;
-  --bg4: #232435;
-  --border: #2a2b3d;
-  --border2: #353650;
-  --text: #e8e9f0;
-  --text2: #9899b0;
-  --text3: #5c5d75;
-  --accent: #6c63ff;
-  --accent2: #8b85ff;
-  --accent-glow: rgba(108,99,255,0.15);
-  --green: #22d3a0;
-  --green-bg: rgba(34,211,160,0.1);
-  --yellow: #f5c542;
-  --yellow-bg: rgba(245,197,66,0.1);
-  --orange: #ff8c42;
-  --orange-bg: rgba(255,140,66,0.1);
-  --red: #ff4f6e;
-  --red-bg: rgba(255,79,110,0.1);
-  --blue: #42b4ff;
-  --blue-bg: rgba(66,180,255,0.1);
-  --purple: #b87aff;
-  --purple-bg: rgba(184,122,255,0.1);
-  --radius: 12px;
-  --radius-sm: 8px;
-  --shadow: 0 4px 24px rgba(0,0,0,0.4);
-  --shadow-lg: 0 8px 48px rgba(0,0,0,0.6);
+:root{
+  --bg:#0e0f14;--bg2:#15161d;--bg3:#1c1d27;--bg4:#232435;
+  --border:#2a2b3d;--border2:#353650;
+  --text:#e8e9f0;--text2:#9899b0;--text3:#5c5d75;
+  --accent:#6c63ff;--accent2:#8b85ff;--accent-glow:rgba(108,99,255,.15);
+  --green:#22d3a0;--green-bg:rgba(34,211,160,.1);
+  --yellow:#f5c542;--yellow-bg:rgba(245,197,66,.1);
+  --orange:#ff8c42;--orange-bg:rgba(255,140,66,.1);
+  --red:#ff4f6e;--red-bg:rgba(255,79,110,.1);
+  --blue:#42b4ff;--blue-bg:rgba(66,180,255,.1);
+  --purple:#b87aff;--purple-bg:rgba(184,122,255,.1);
+  --radius:12px;--radius-sm:8px;
+  --shadow:0 4px 24px rgba(0,0,0,.4);--shadow-lg:0 8px 48px rgba(0,0,0,.6);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{font-size:15px;-webkit-font-smoothing:antialiased}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
-a{color:inherit;text-decoration:none}
 button{font-family:inherit;cursor:pointer;border:none;background:none}
 input,textarea,select{font-family:inherit}
 ::-webkit-scrollbar{width:6px;height:6px}
@@ -49,66 +77,59 @@ input,textarea,select{font-family:inherit}
 
 /* LAYOUT */
 .app{display:flex;min-height:100vh}
-.sidebar{width:240px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;transition:transform 0.3s}
+.sidebar{width:240px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;transition:transform .3s}
 .main{margin-left:240px;flex:1;display:flex;flex-direction:column;min-height:100vh}
 .topbar{height:60px;background:var(--bg2);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 24px;gap:12px;position:sticky;top:0;z-index:50}
-.content{flex:1;padding:28px 28px 40px;max-width:1400px;width:100%}
+.content{flex:1;padding:28px 28px 60px;max-width:1400px;width:100%}
 
 /* SIDEBAR */
 .sidebar-logo{padding:20px 20px 12px;display:flex;align-items:center;gap:10px}
-.logo-mark{width:32px;height:32px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff}
-.logo-text{font-size:17px;font-weight:700;letter-spacing:-0.3px}
-.logo-sub{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;letter-spacing:1px;text-transform:uppercase}
-
+.logo-mark{width:32px;height:32px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0}
+.logo-text{font-size:17px;font-weight:700;letter-spacing:-.3px}
 .sidebar-nav{flex:1;padding:8px 12px;overflow-y:auto}
 .nav-section{margin-bottom:20px}
 .nav-label{font-size:10px;font-weight:600;color:var(--text3);letter-spacing:1.2px;text-transform:uppercase;padding:0 8px;margin-bottom:6px}
-.nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:14px;font-weight:500;color:var(--text2);transition:all 0.15s;position:relative;margin-bottom:2px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:14px;font-weight:500;color:var(--text2);transition:all .15s;position:relative;margin-bottom:2px}
 .nav-item:hover{background:var(--bg3);color:var(--text)}
 .nav-item.active{background:var(--accent-glow);color:var(--accent2)}
 .nav-item.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:16px;background:var(--accent);border-radius:0 2px 2px 0}
 .nav-icon{font-size:16px;width:20px;text-align:center;flex-shrink:0}
 .nav-badge{margin-left:auto;background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:10px;min-width:18px;text-align:center}
 .nav-badge.warn{background:var(--orange)}
-
 .sidebar-footer{padding:16px 12px;border-top:1px solid var(--border)}
-.user-card{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--radius-sm);cursor:pointer;transition:background 0.15s}
-.user-card:hover{background:var(--bg3)}
+.user-card{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--radius-sm)}
 .avatar{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--purple));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
 .user-info{flex:1;min-width:0}
 .user-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .user-role{font-size:11px;color:var(--text3)}
-.theme-toggle{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--text3);transition:all 0.15s}
-.theme-toggle:hover{background:var(--bg3);color:var(--text)}
+.logout-btn{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--text3);cursor:pointer;transition:all .15s;flex-shrink:0}
+.logout-btn:hover{background:var(--bg3);color:var(--red)}
 
 /* TOPBAR */
-.topbar-left{display:flex;align-items:center;gap:8px;flex:1}
 .hamburger{display:none;flex-direction:column;gap:4px;cursor:pointer;padding:4px}
 .hamburger span{display:block;width:18px;height:2px;background:var(--text2);border-radius:1px}
-.page-title{font-size:17px;font-weight:700;letter-spacing:-0.3px}
-.search-wrap{position:relative;max-width:320px;width:100%}
+.page-title{font-size:17px;font-weight:700;letter-spacing:-.3px;white-space:nowrap}
+.search-wrap{position:relative;flex:1;max-width:300px}
 .search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:14px}
-.search-input{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:8px 12px 8px 36px;border-radius:var(--radius-sm);font-size:13px;outline:none;transition:border-color 0.15s}
+.search-input{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:8px 12px 8px 36px;border-radius:var(--radius-sm);font-size:13px;outline:none;transition:border-color .15s}
 .search-input::placeholder{color:var(--text3)}
 .search-input:focus{border-color:var(--border2)}
-.topbar-right{display:flex;align-items:center;gap:8px}
-.btn-icon{width:36px;height:36px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;color:var(--text2);transition:all 0.15s;position:relative}
+.topbar-right{display:flex;align-items:center;gap:8px;margin-left:auto}
+.btn-icon{width:36px;height:36px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;color:var(--text2);transition:all .15s;position:relative}
 .btn-icon:hover{background:var(--bg3);color:var(--text)}
 .notif-dot{position:absolute;top:6px;right:6px;width:7px;height:7px;background:var(--red);border-radius:50%;border:2px solid var(--bg2)}
-.btn-primary{background:var(--accent);color:#fff;padding:8px 16px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;transition:all 0.15s;white-space:nowrap}
-.btn-primary:hover{background:var(--accent2);transform:translateY(-1px);box-shadow:0 4px 16px rgba(108,99,255,0.3)}
-.btn-secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border);padding:7px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;display:flex;align-items:center;gap:6px;transition:all 0.15s}
+.btn-primary{background:var(--accent);color:#fff;padding:8px 16px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;transition:all .15s;white-space:nowrap}
+.btn-primary:hover{background:var(--accent2);transform:translateY(-1px);box-shadow:0 4px 16px rgba(108,99,255,.3)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.btn-secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border);padding:7px 14px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;display:flex;align-items:center;gap:6px;transition:all .15s}
 .btn-secondary:hover{background:var(--bg4);border-color:var(--border2)}
-.btn-ghost{color:var(--text2);padding:7px 12px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;display:flex;align-items:center;gap:6px;transition:all 0.15s}
+.btn-ghost{color:var(--text2);padding:7px 12px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;display:flex;align-items:center;gap:6px;transition:all .15s}
 .btn-ghost:hover{background:var(--bg3);color:var(--text)}
 
-/* CARDS */
+/* CARDS / TABLE */
 .card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
-.card-sm{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
-
-/* STAT CARDS */
-.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:28px}
-.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px;position:relative;overflow:hidden;cursor:default;transition:border-color 0.2s,transform 0.2s}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:16px;margin-bottom:28px}
+.stat-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px;position:relative;overflow:hidden;cursor:pointer;transition:border-color .2s,transform .2s}
 .stat-card:hover{border-color:var(--border2);transform:translateY(-2px)}
 .stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
 .stat-card.total::before{background:var(--accent)}
@@ -117,35 +138,27 @@ input,textarea,select{font-family:inherit}
 .stat-card.overdue::before{background:var(--red)}
 .stat-card.completed::before{background:var(--green)}
 .stat-card.blocked::before{background:var(--orange)}
-.stat-icon{font-size:22px;margin-bottom:12px}
-.stat-num{font-size:28px;font-weight:700;letter-spacing:-1px;line-height:1}
-.stat-label{font-size:12px;color:var(--text2);margin-top:4px;font-weight:500}
-.stat-trend{font-size:11px;color:var(--text3);margin-top:8px}
+.stat-num{font-size:28px;font-weight:700;letter-spacing:-1px;line-height:1;margin-bottom:4px}
+.stat-label{font-size:12px;color:var(--text2);font-weight:500}
 
-/* TASK TABLE */
+/* TABLE */
 .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px;flex-wrap:wrap}
 .section-title{font-size:16px;font-weight:700}
 .filter-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.filter-chip{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:500;background:var(--bg3);border:1px solid var(--border);color:var(--text2);cursor:pointer;transition:all 0.15s}
+.filter-chip{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:500;background:var(--bg3);border:1px solid var(--border);color:var(--text2);cursor:pointer;transition:all .15s}
 .filter-chip:hover,.filter-chip.active{background:var(--accent-glow);border-color:var(--accent);color:var(--accent2)}
 .select-filter{background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:5px 10px;border-radius:var(--radius-sm);font-size:12px;outline:none;cursor:pointer}
-.select-filter:focus{border-color:var(--border2)}
-
 .task-table{width:100%;border-collapse:collapse}
-.task-table th{text-align:left;font-size:11px;font-weight:600;color:var(--text3);letter-spacing:0.8px;text-transform:uppercase;padding:10px 14px;border-bottom:1px solid var(--border);white-space:nowrap}
+.task-table th{text-align:left;font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.8px;text-transform:uppercase;padding:10px 14px;border-bottom:1px solid var(--border);white-space:nowrap}
 .task-table td{padding:12px 14px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
 .task-table tr:last-child td{border-bottom:none}
-.task-table tr:hover td{background:var(--bg3)}
-.task-table tbody tr{cursor:pointer;transition:background 0.1s}
-
-.task-title-cell{max-width:280px}
-.task-title{font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.task-desc-preview{font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
-.task-pinned{color:var(--yellow);font-size:11px;margin-right:4px}
+.task-table tbody tr{cursor:pointer;transition:background .1s}
+.task-table tbody tr:hover td{background:var(--bg3)}
+.task-title{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px}
+.task-desc-preview{font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px;margin-top:2px}
 
 /* BADGES */
 .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;white-space:nowrap}
-.badge-dot{width:6px;height:6px;border-radius:50%}
 .p-low{background:var(--green-bg);color:var(--green)}
 .p-medium{background:var(--blue-bg);color:var(--blue)}
 .p-high{background:var(--orange-bg);color:var(--orange)}
@@ -156,75 +169,66 @@ input,textarea,select{font-family:inherit}
 .s-completed{background:var(--green-bg);color:var(--green)}
 .s-on-hold{background:var(--purple-bg);color:var(--purple)}
 .s-overdue{background:var(--red-bg);color:var(--red)}
-
 .due-date{font-size:12px;color:var(--text2)}
 .due-date.overdue{color:var(--red)}
 .due-date.today{color:var(--yellow)}
 .due-date.soon{color:var(--orange)}
 
-.assignee-chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)}
-.assignee-avatar{width:20px;height:20px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--purple));display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0}
-.assignee-avatar.me{background:linear-gradient(135deg,var(--accent),var(--purple))}
-
-.action-btn{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--text3);transition:all 0.15s;flex-shrink:0}
-.action-btn:hover{background:var(--bg4);color:var(--text)}
-.actions-cell{display:flex;align-items:center;gap:4px}
-
 /* KANBAN */
-.kanban-wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;align-items:start}
+.kanban-wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px;align-items:start}
 .kanban-col{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
 .kanban-col-header{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
-.kanban-col-title{font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px}
+.kanban-col-title{font-size:13px;font-weight:700}
 .kanban-count{background:var(--bg3);color:var(--text3);font-size:11px;font-weight:600;padding:2px 7px;border-radius:10px}
-.kanban-cards{padding:10px;display:flex;flex-direction:column;gap:8px;min-height:60px}
-.kanban-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;cursor:pointer;transition:all 0.15s}
+.kanban-cards{padding:10px;display:flex;flex-direction:column;gap:8px;min-height:50px}
+.kanban-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;cursor:pointer;transition:all .15s}
 .kanban-card:hover{border-color:var(--border2);box-shadow:var(--shadow)}
 .kanban-card-title{font-size:13px;font-weight:600;margin-bottom:8px;line-height:1.4}
-.kanban-card-meta{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px}
-.kanban-card-due{font-size:11px;color:var(--text3)}
+.kanban-card-meta{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px}
 
 /* CALENDAR */
 .calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--border)}
-.cal-header{background:var(--bg2);padding:8px;text-align:center;font-size:11px;font-weight:600;color:var(--text3);letter-spacing:0.5px}
-.cal-day{background:var(--bg2);min-height:90px;padding:8px;position:relative;transition:background 0.15s}
+.cal-header{background:var(--bg2);padding:8px;text-align:center;font-size:11px;font-weight:600;color:var(--text3)}
+.cal-day{background:var(--bg2);min-height:88px;padding:6px;transition:background .15s}
 .cal-day:hover{background:var(--bg3)}
-.cal-day.other-month .cal-day-num{color:var(--text3);opacity:0.4}
-.cal-day.today .cal-day-num{background:var(--accent);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center}
-.cal-day-num{font-size:12px;font-weight:600;margin-bottom:4px;width:22px;height:22px;display:flex;align-items:center;justify-content:center}
-.cal-task-dot{font-size:10px;font-weight:500;padding:2px 5px;border-radius:4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.cal-day.other-month{opacity:.4}
+.cal-day-num{font-size:12px;font-weight:600;margin-bottom:4px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:50%}
+.cal-day.today .cal-day-num{background:var(--accent);color:#fff}
+.cal-task-dot{font-size:10px;padding:2px 5px;border-radius:4px;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
 
-/* TASK MODAL */
-.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto;opacity:0;pointer-events:none;transition:opacity 0.2s}
+/* PROGRESS */
+.progress-track{background:var(--bg3);border-radius:4px;height:6px;overflow:hidden;margin-bottom:3px}
+.progress-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .4s}
+.progress-label{font-size:11px;color:var(--text3)}
+
+/* MODAL */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto;opacity:0;pointer-events:none;transition:opacity .2s}
 .overlay.open{opacity:1;pointer-events:all}
-.modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);width:100%;max-width:720px;box-shadow:var(--shadow-lg);transform:translateY(20px);transition:transform 0.2s;animation:slideIn 0.2s forwards}
-@keyframes slideIn{to{transform:translateY(0)}}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);width:100%;max-width:700px;box-shadow:var(--shadow-lg);animation:slideIn .2s forwards}
+@keyframes slideIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
 .modal-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
-.modal-title-wrap{flex:1;min-width:0}
-.modal-title-input{font-size:20px;font-weight:700;color:var(--text);background:none;border:none;outline:none;width:100%;letter-spacing:-0.3px}
+.modal-title-input{font-size:19px;font-weight:700;color:var(--text);background:none;border:none;outline:none;width:100%;letter-spacing:-.3px}
 .modal-title-input::placeholder{color:var(--text3)}
-.modal-close{width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--text2);flex-shrink:0}
+.modal-close{width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--text2);flex-shrink:0;transition:all .15s}
 .modal-close:hover{background:var(--bg3);color:var(--text)}
-.modal-body{padding:24px;display:grid;gap:20px}
+.modal-body{padding:24px;display:grid;gap:18px}
 .modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.modal-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
 .form-group{display:flex;flex-direction:column;gap:6px}
-.form-label{font-size:11px;font-weight:600;color:var(--text3);letter-spacing:0.8px;text-transform:uppercase}
-.form-input{background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:var(--radius-sm);font-size:13px;outline:none;transition:border-color 0.15s;width:100%}
+.form-label{font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.8px;text-transform:uppercase}
+.form-input{background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:var(--radius-sm);font-size:13px;outline:none;transition:border-color .15s;width:100%}
 .form-input::placeholder{color:var(--text3)}
 .form-input:focus{border-color:var(--accent)}
-.form-textarea{resize:vertical;min-height:90px;font-family:inherit;line-height:1.6}
+.form-input:disabled,.form-input[readonly]{opacity:.6;cursor:not-allowed}
+.form-textarea{resize:vertical;min-height:80px;font-family:inherit;line-height:1.6}
 .form-select{appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239899b0' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
-
 .modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.modal-footer-left{display:flex;align-items:center;gap:8px}
 
 /* COMMENTS */
 .comments-section{border-top:1px solid var(--border);padding:20px 24px}
-.comments-title{font-size:13px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:6px}
 .comment-item{display:flex;gap:10px;margin-bottom:14px}
 .comment-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
 .comment-bubble{flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px}
-.comment-meta{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.comment-meta{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
 .comment-author{font-size:12px;font-weight:600}
 .comment-time{font-size:11px;color:var(--text3)}
 .comment-text{font-size:13px;color:var(--text2);line-height:1.5}
@@ -232,517 +236,542 @@ input,textarea,select{font-family:inherit}
 .comment-input{flex:1;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:var(--radius-sm);font-size:13px;outline:none}
 .comment-input:focus{border-color:var(--accent)}
 
-/* ACTIVITY LOG */
-.activity-item{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
-.activity-item:last-child{border-bottom:none}
-.activity-icon{width:28px;height:28px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
-.activity-content{flex:1}
-.activity-text{font-size:12px;color:var(--text2);line-height:1.5}
-.activity-text strong{color:var(--text)}
-.activity-time{font-size:11px;color:var(--text3);margin-top:2px}
-
-/* INSIGHTS */
-.insights-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:24px}
-.insight-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
-.insight-label{font-size:11px;font-weight:600;color:var(--text3);letter-spacing:0.8px;text-transform:uppercase;margin-bottom:10px}
-.insight-value{font-size:26px;font-weight:700;letter-spacing:-0.5px}
-.insight-sub{font-size:12px;color:var(--text3);margin-top:4px}
-.bar-wrap{margin-top:12px;display:flex;flex-direction:column;gap:8px}
-.bar-row{display:flex;align-items:center;gap:10px;font-size:12px}
-.bar-label{width:80px;color:var(--text2);font-size:11px;flex-shrink:0}
-.bar-track{flex:1;background:var(--bg3);border-radius:4px;height:6px;overflow:hidden}
-.bar-fill{height:100%;border-radius:4px;transition:width 0.6s}
-.bar-val{width:24px;text-align:right;color:var(--text3);font-size:11px;flex-shrink:0}
-
 /* SHARE MODAL */
-.share-link-box{display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;margin:12px 0}
-.share-link-text{flex:1;font-family:'DM Mono',monospace;font-size:12px;color:var(--accent2);word-break:break-all}
-.copy-btn{padding:5px 10px;background:var(--accent);color:#fff;border-radius:6px;font-size:11px;font-weight:600;white-space:nowrap}
+.share-link-box{display:flex;align-items:center;gap:8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;word-break:break-all}
+.share-link-text{flex:1;font-family:'DM Mono',monospace;font-size:12px;color:var(--accent2)}
+.copy-btn{padding:5px 10px;background:var(--accent);color:#fff;border-radius:6px;font-size:11px;font-weight:600;white-space:nowrap;cursor:pointer}
 
-/* NOTIFICATIONS */
-.notif-panel{position:fixed;right:0;top:60px;width:340px;background:var(--bg2);border-left:1px solid var(--border);border-bottom:1px solid var(--border);box-shadow:var(--shadow-lg);z-index:90;max-height:calc(100vh - 60px);overflow-y:auto;transform:translateX(100%);transition:transform 0.25s}
+/* NOTIF */
+.notif-panel{position:fixed;right:0;top:60px;width:340px;background:var(--bg2);border-left:1px solid var(--border);border-bottom:1px solid var(--border);box-shadow:var(--shadow-lg);z-index:90;max-height:calc(100vh - 60px);overflow-y:auto;transform:translateX(100%);transition:transform .25s}
 .notif-panel.open{transform:translateX(0)}
-.notif-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
-.notif-item{padding:14px 20px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s}
+.notif-item{padding:14px 20px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s}
 .notif-item:hover{background:var(--bg3)}
 .notif-item.unread{background:var(--accent-glow)}
-.notif-item-title{font-size:13px;font-weight:600;margin-bottom:3px}
-.notif-item-text{font-size:12px;color:var(--text2);line-height:1.4}
-.notif-item-time{font-size:11px;color:var(--text3);margin-top:4px}
 
-/* EMPTY STATE */
-.empty-state{text-align:center;padding:60px 20px;color:var(--text3)}
-.empty-icon{font-size:48px;margin-bottom:16px;opacity:0.5}
-.empty-title{font-size:16px;font-weight:600;color:var(--text2);margin-bottom:8px}
-.empty-text{font-size:13px;line-height:1.6}
-
-/* PROGRESS */
-.progress-wrap{margin-top:6px}
-.progress-track{background:var(--bg3);border-radius:4px;height:6px;overflow:hidden;margin-bottom:4px}
-.progress-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width 0.4s}
-.progress-label{font-size:11px;color:var(--text3)}
-
-/* TABS */
-.tabs{display:flex;gap:2px;background:var(--bg3);border-radius:var(--radius-sm);padding:3px;width:fit-content;margin-bottom:20px}
-.tab{padding:6px 14px;border-radius:6px;font-size:13px;font-weight:500;color:var(--text2);cursor:pointer;transition:all 0.15s;white-space:nowrap}
-.tab.active{background:var(--bg2);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,0.3)}
+/* INSIGHTS */
+.insights-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:16px;margin-bottom:24px}
+.insight-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:20px}
+.bar-wrap{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.bar-row{display:flex;align-items:center;gap:8px;font-size:12px}
+.bar-label{width:76px;color:var(--text2);font-size:11px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-track{flex:1;background:var(--bg3);border-radius:4px;height:6px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;transition:width .6s}
+.bar-val{width:22px;text-align:right;color:var(--text3);font-size:11px;flex-shrink:0}
 
 /* LOGIN */
 .login-page{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);position:relative;overflow:hidden}
-.login-bg{position:absolute;inset:0;background:radial-gradient(ellipse 60% 50% at 50% 0%,rgba(108,99,255,0.15),transparent)}
-.login-card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:40px;width:100%;max-width:420px;position:relative;z-index:1;box-shadow:var(--shadow-lg)}
-.login-logo{display:flex;align-items:center;gap:12px;margin-bottom:32px;justify-content:center}
-.login-logo-mark{width:44px;height:44px;background:var(--accent);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff}
-.login-logo-text{font-size:24px;font-weight:700;letter-spacing:-0.5px}
-.login-subtitle{text-align:center;color:var(--text2);font-size:14px;margin-bottom:32px;line-height:1.5}
+.login-bg{position:absolute;inset:0;background:radial-gradient(ellipse 60% 50% at 50% 0%,rgba(108,99,255,.18),transparent)}
+.login-card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:40px;width:100%;max-width:420px;position:relative;z-index:1;box-shadow:var(--shadow-lg);animation:slideIn .3s forwards}
+.login-logo{display:flex;align-items:center;gap:12px;margin-bottom:28px;justify-content:center}
+.login-logo-mark{width:44px;height:44px;background:var(--accent);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#fff}
+.login-logo-text{font-size:24px;font-weight:700;letter-spacing:-.5px}
 .login-form{display:flex;flex-direction:column;gap:14px}
-.login-divider{display:flex;align-items:center;gap:12px;color:var(--text3);font-size:12px;margin:8px 0}
-.login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:var(--border)}
-.login-btn-google{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:11px;border-radius:var(--radius-sm);font-size:14px;font-weight:500;cursor:pointer;transition:all 0.15s;width:100%}
-.login-btn-google:hover{background:var(--bg4);border-color:var(--border2)}
-.login-tab-wrap{display:flex;background:var(--bg3);border-radius:var(--radius-sm);padding:3px;margin-bottom:20px}
-.login-tab{flex:1;text-align:center;padding:8px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text2);transition:all 0.15s}
+.login-tab-wrap{display:flex;background:var(--bg3);border-radius:var(--radius-sm);padding:3px;margin-bottom:18px}
+.login-tab{flex:1;text-align:center;padding:8px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text2);transition:all .15s}
 .login-tab.active{background:var(--bg2);color:var(--text)}
-.login-note{font-size:12px;color:var(--text3);text-align:center;margin-top:16px;line-height:1.6}
-.login-link{color:var(--accent2);cursor:pointer}
+
+/* COLLAB ASK NAME */
+.collab-page{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg)}
+.collab-card{background:var(--bg2);border:1px solid var(--border);border-radius:16px;padding:40px;width:100%;max-width:400px;box-shadow:var(--shadow-lg);animation:slideIn .3s forwards;text-align:center}
 
 /* TOAST */
 .toast-wrap{position:fixed;bottom:24px;right:24px;z-index:500;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
-.toast{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 16px;font-size:13px;font-weight:500;box-shadow:var(--shadow);display:flex;align-items:center;gap:10px;animation:toastIn 0.3s;max-width:320px}
+.toast{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 16px;font-size:13px;font-weight:500;box-shadow:var(--shadow);display:flex;align-items:center;gap:8px;max-width:320px;animation:toastIn .3s}
 @keyframes toastIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
 .toast.success{border-color:var(--green);color:var(--green)}
 .toast.error{border-color:var(--red);color:var(--red)}
 .toast.info{border-color:var(--accent);color:var(--accent2)}
 
-/* MOBILE OVERLAY */
-.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:99}
+/* LOADING */
+.loading-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);flex-direction:column;gap:16px}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* EMPTY */
+.empty-state{text-align:center;padding:50px 20px;color:var(--text3)}
+.empty-icon{font-size:44px;margin-bottom:14px;opacity:.5}
+.empty-title{font-size:15px;font-weight:600;color:var(--text2);margin-bottom:6px}
+.empty-text{font-size:13px;line-height:1.6}
+
+/* SIDEBAR OVERLAY */
+.sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99}
 
 /* RESPONSIVE */
 @media(max-width:900px){
   .sidebar{transform:translateX(-100%)}
   .sidebar.open{transform:translateX(0)}
-  .sidebar-overlay{display:block;opacity:0;pointer-events:none;transition:opacity 0.3s}
+  .sidebar-overlay{display:block;opacity:0;pointer-events:none;transition:opacity .3s}
   .sidebar-overlay.open{opacity:1;pointer-events:all}
   .main{margin-left:0}
   .hamburger{display:flex}
   .stats-grid{grid-template-columns:repeat(2,1fr)}
-  .modal-grid,.modal-grid-3{grid-template-columns:1fr}
-  .kanban-wrap{grid-template-columns:1fr}
-  .content{padding:16px}
-  .topbar{padding:0 16px}
+  .modal-grid{grid-template-columns:1fr}
+  .content{padding:16px 16px 40px}
 }
 @media(max-width:600px){
   .stats-grid{grid-template-columns:1fr 1fr}
-  .task-table th:nth-child(n+4),.task-table td:nth-child(n+4){display:none}
+  .task-table th:nth-child(n+5),.task-table td:nth-child(n+5){display:none}
+  .kanban-wrap{grid-template-columns:1fr}
   .calendar-grid{font-size:11px}
   .cal-day{min-height:60px;padding:4px}
-  .tabs{flex-wrap:wrap}
-  .btn-primary span{display:none}
 }
-
-/* COLLAB VIEW */
-.external-view .sidebar,.external-view .topbar-right,.external-view .nav-item:not(.collab-allowed){opacity:0.3;pointer-events:none}
-
-/* ANIMATIONS */
 @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-.fade-in{animation:fadeIn 0.3s}
-.page-section{animation:fadeIn 0.3s}
-
-/* PIN INDICATOR */
-.pin-star{color:var(--yellow);font-size:12px}
-
-/* RECURRING TAG */
-.recurring-tag{display:inline-flex;align-items:center;gap:3px;font-size:10px;color:var(--text3);padding:2px 6px;background:var(--bg3);border-radius:4px;border:1px solid var(--border)}
+.fade-in{animation:fadeIn .3s}
 </style>
 </head>
 <body>
-
-<div id="app"></div>
+<div id="root"><div class="loading-screen"><div class="spinner"></div><div style="color:var(--text3);font-size:13px">Loading TaskFlow…</div></div></div>
 <div class="toast-wrap" id="toastWrap"></div>
 
 <script>
 // ============================================================
-// DATA STORE (localStorage-backed, no server needed)
+// WAIT FOR FIREBASE TO LOAD
 // ============================================================
-const DB = {
-  get(key, def) {
-    try { const v = localStorage.getItem('tf_' + key); return v ? JSON.parse(v) : def; } catch(e) { return def; }
-  },
-  set(key, val) { try { localStorage.setItem('tf_' + key, JSON.stringify(val)); } catch(e) {} }
-};
+function waitForFb(cb) {
+  if (window._fb) { cb(window._fb); return; }
+  const t = setInterval(() => { if (window._fb) { clearInterval(t); cb(window._fb); } }, 50);
+}
 
-function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
-function now() { return new Date().toISOString(); }
-function fmtDate(d) {
-  if (!d) return '';
-  const dt = new Date(d);
-  return dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+// ============================================================
+// HELPERS
+// ============================================================
+const $ = id => document.getElementById(id);
+const root = () => document.getElementById('root');
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmtDate(ts) {
+  if (!ts) return '';
+  const d = ts?.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
 }
-function fmtRel(d) {
-  if (!d) return '';
-  const diff = new Date(d) - new Date();
-  const days = Math.ceil(diff / 86400000);
-  if (days < 0) return `${Math.abs(days)}d overdue`;
-  if (days === 0) return 'Today';
-  if (days === 1) return 'Tomorrow';
-  if (days <= 7) return `In ${days}d`;
-  return fmtDate(d);
+function fmtRel(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr); const now = new Date();
+  const diff = Math.ceil((d - now) / 86400000);
+  if (diff < 0) return `${Math.abs(diff)}d overdue`;
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Tomorrow';
+  if (diff <= 7) return `In ${diff}d`;
+  return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
 }
-function dueCls(d, status) {
-  if (!d || status === 'completed') return '';
-  const diff = new Date(d) - new Date();
-  const days = Math.ceil(diff / 86400000);
-  if (days < 0) return 'overdue';
-  if (days === 0) return 'today';
-  if (days <= 2) return 'soon';
+function dueCls(dueDate, status) {
+  if (!dueDate || status === 'completed') return '';
+  const diff = Math.ceil((new Date(dueDate) - new Date()) / 86400000);
+  if (diff < 0) return 'overdue';
+  if (diff === 0) return 'today';
+  if (diff <= 2) return 'soon';
   return '';
 }
-
-// ============================================================
-// SEED DATA
-// ============================================================
-function seed() {
-  if (DB.get('seeded', false)) return;
-  const me = { id: 'me', name: 'Arjun Sharma', email: 'arjun@example.com', role: 'admin', avatar: 'AS' };
-  const collaborators = [
-    { id: 'c1', name: 'Priya Menon', email: 'priya@team.com', role: 'collaborator', avatar: 'PM', color: '#42b4ff' },
-    { id: 'c2', name: 'Rahul Nair', email: 'rahul@corp.com', role: 'collaborator', avatar: 'RN', color: '#22d3a0' },
-    { id: 'c3', name: 'Sunita Kapoor', email: 'sunita@biz.in', role: 'collaborator', avatar: 'SK', color: '#b87aff' },
-  ];
-  const categories = ['Design', 'Development', 'Marketing', 'Finance', 'Operations', 'Personal'];
-  const priorities = ['low','medium','high','urgent'];
-  const statuses = ['not-started','in-progress','blocked','completed','on-hold'];
-
-  const tasks = [
-    { id:uid(), title:'Redesign landing page hero section', desc:'Update the hero to reflect new brand guidelines. Include animated headline, updated CTA button, and mobile-first layout.', assignedBy:'c1', priority:'urgent', status:'in-progress', dueDate:'2026-03-20', category:'Design', pinned:true, progress:65, attachments:[], links:'https://figma.com/design-brief', recurring:false },
-    { id:uid(), title:'Fix checkout API timeout bug', desc:'Users are experiencing 30s timeouts during checkout. Investigate payment gateway integration and add retry logic.', assignedBy:'c2', priority:'urgent', status:'in-progress', dueDate:'2026-03-19', category:'Development', pinned:false, progress:40, attachments:[], links:'', recurring:false },
-    { id:uid(), title:'Prepare Q1 performance report', desc:'Compile metrics from Analytics, Sales, and Support. Include YoY comparison and executive summary.', assignedBy:'c1', priority:'high', status:'not-started', dueDate:'2026-03-25', category:'Finance', pinned:false, progress:0, attachments:[], links:'', recurring:false },
-    { id:uid(), title:'Set up CI/CD pipeline for staging', desc:'Configure GitHub Actions workflow for auto-deploy to staging on PR merge. Include build, test, and notify steps.', assignedBy:'c2', priority:'high', status:'blocked', dueDate:'2026-03-22', category:'Development', pinned:false, progress:20, attachments:[], links:'', recurring:false },
-    { id:uid(), title:'Write social media content calendar', desc:'Plan 30 days of content across LinkedIn, Instagram, and Twitter. Align with product launch timeline.', assignedBy:'c3', priority:'medium', status:'not-started', dueDate:'2026-03-28', category:'Marketing', pinned:false, progress:0, attachments:[], links:'', recurring:false },
-    { id:uid(), title:'Update vendor contracts for renewal', desc:'Review 3 expiring vendor agreements, flag key terms, and send renewal emails with updated scope.', assignedBy:'me', priority:'medium', status:'on-hold', dueDate:'2026-04-01', category:'Operations', pinned:false, progress:10, attachments:[], links:'', recurring:false },
-    { id:uid(), title:'User research sessions — UX audit', desc:'Conduct 5 moderated user sessions. Document findings and create affinity map for design team.', assignedBy:'c1', priority:'high', status:'completed', dueDate:'2026-03-14', category:'Design', pinned:false, progress:100, attachments:[], links:'', recurring:false },
-    { id:uid(), title:'Daily standup notes', desc:'Write and share standup updates every morning.', assignedBy:'me', priority:'low', status:'in-progress', dueDate:'2026-03-31', category:'Personal', pinned:false, progress:70, attachments:[], links:'', recurring:true },
-    { id:uid(), title:'Migrate database to PostgreSQL 16', desc:'Upgrade DB version, test all migrations, and validate production schema before cutover.', assignedBy:'c2', priority:'urgent', status:'not-started', dueDate:'2026-03-17', category:'Development', pinned:false, progress:0, attachments:[], links:'', recurring:false },
-    { id:uid(), title:'Create onboarding documentation', desc:'Write step-by-step guide for new team members. Include tool access, process flows, and key contacts.', assignedBy:'me', priority:'low', status:'not-started', dueDate:'2026-04-10', category:'Operations', pinned:false, progress:0, attachments:[], links:'', recurring:false },
-  ];
-
-  const now_iso = now();
-  tasks.forEach(t => {
-    t.createdAt = now_iso;
-    t.updatedAt = now_iso;
-    t.comments = [];
-    t.activityLog = [{ id:uid(), by:'me', text:`Task created`, time:now_iso }];
-  });
-
-  // Add some comments
-  tasks[0].comments = [
-    { id:uid(), by:'c1', text:'Please match the new color palette from Figma. The gradient should use #6C63FF to #B87AFF.', time: new Date(Date.now()-3600000).toISOString() },
-    { id:uid(), by:'me', text:'Got it. Working on mobile breakpoints first. Will share preview by EOD.', time: new Date(Date.now()-1800000).toISOString() },
-  ];
-  tasks[1].comments = [
-    { id:uid(), by:'c2', text:'This is blocking 15% of users. Please escalate if you need help.', time: new Date(Date.now()-7200000).toISOString() },
-  ];
-
-  const notifications = [
-    { id:uid(), title:'New task assigned', text:'Priya Menon assigned you "Redesign landing page hero section"', time: new Date(Date.now()-3600000).toISOString(), read:false },
-    { id:uid(), title:'Task overdue', text:'"Migrate database to PostgreSQL 16" was due yesterday', time: new Date(Date.now()-86400000).toISOString(), read:false },
-    { id:uid(), title:'Due soon', text:'"Fix checkout API timeout bug" is due tomorrow', time: new Date(Date.now()-7200000).toISOString(), read:true },
-  ];
-
-  DB.set('user', me);
-  DB.set('collaborators', collaborators);
-  DB.set('tasks', tasks);
-  DB.set('notifications', notifications);
-  DB.set('shareToken', uid());
-  DB.set('seeded', true);
+function statusLabel(s) {
+  return {'not-started':'Not Started','in-progress':'In Progress','blocked':'Blocked','completed':'Completed','on-hold':'On Hold','overdue':'Overdue'}[s]||s;
+}
+function priorityBadge(p) {
+  const cls={low:'p-low',medium:'p-medium',high:'p-high',urgent:'p-urgent'}[p]||'p-low';
+  const icons={low:'↓',medium:'→',high:'↑',urgent:'‼'};
+  return `<span class="badge ${cls}">${icons[p]||''}${(p||'').charAt(0).toUpperCase()+(p||'').slice(1)}</span>`;
+}
+function statusBadge(s) {
+  const eff = s;
+  const cls={'not-started':'s-not-started','in-progress':'s-in-progress','blocked':'s-blocked','completed':'s-completed','on-hold':'s-on-hold','overdue':'s-overdue'}[eff]||'s-not-started';
+  return `<span class="badge ${cls}">${statusLabel(eff)}</span>`;
+}
+function getInitials(name) {
+  if (!name) return '?';
+  return name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+}
+function toast(msg, type='info') {
+  const wrap = $('toastWrap'); if (!wrap) return;
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span>${{success:'✓',error:'✕',info:'ℹ'}[type]||'ℹ'}</span><span>${msg}</span>`;
+  wrap.appendChild(el);
+  setTimeout(()=>{ el.style.opacity='0'; el.style.transform='translateX(20px)'; el.style.transition='all .3s'; setTimeout(()=>el.remove(),300); }, 3000);
+}
+function effectiveStatus(task) {
+  if (task.status !== 'completed' && task.dueDate) {
+    const d = new Date(task.dueDate); d.setHours(23,59,59,0);
+    if (d < new Date()) return 'overdue';
+  }
+  return task.status;
 }
 
 // ============================================================
-// STATE
+// APP STATE
 // ============================================================
-const State = {
-  user: null,
-  collaborators: [],
+const S = {
+  fb: null,
+  user: null,       // Firebase Auth user
+  isAdmin: false,
+  isCollab: false,
+  collabName: '',
+  collabId: '',     // stored in localStorage per device
   tasks: [],
-  notifications: [],
-  shareToken: '',
   view: 'dashboard',
   taskModal: null,
   shareModal: false,
   notifOpen: false,
   sidebarOpen: false,
   searchQ: '',
-  filters: { status: '', priority: '', category: '', assignedBy: '' },
+  filters: { status:'', priority:'', category:'' },
   calMonth: new Date().getMonth(),
-  calYear: new Date().getFullYear(),
-  activeTab: 'list',
-  insightPeriod: 'week',
-  isExternal: false,
-  externalCollaborator: null,
+  calYear:  new Date().getFullYear(),
+  unsubTasks: null,
 
-  load() {
-    seed();
-    this.user = DB.get('user', null);
-    this.collaborators = DB.get('collaborators', []);
-    this.tasks = DB.get('tasks', []);
-    this.notifications = DB.get('notifications', []);
-    this.shareToken = DB.get('shareToken', '');
-    // Check if external user
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('share') === this.shareToken && params.get('collab')) {
-      this.isExternal = true;
-      const collabId = params.get('collab');
-      this.externalCollaborator = this.collaborators.find(c => c.id === collabId) || {
-        id: 'guest', name: 'Guest', email: '', role: 'collaborator', avatar: 'GU', color: '#9899b0'
-      };
-    }
-  },
-  save() { DB.set('tasks', this.tasks); DB.set('notifications', this.notifications); },
-  saveCollabs() { DB.set('collaborators', this.collaborators); },
-
-  getFilteredTasks() {
-    let tasks = this.tasks;
-    if (this.isExternal) {
-      tasks = tasks.filter(t => t.assignedBy === this.externalCollaborator.id);
+  filteredTasks() {
+    let tasks = [...this.tasks];
+    if (this.isCollab) {
+      tasks = tasks.filter(t => t.assignedById === this.collabId);
     }
     if (this.searchQ) {
       const q = this.searchQ.toLowerCase();
-      tasks = tasks.filter(t => t.title.toLowerCase().includes(q) || (t.desc||'').toLowerCase().includes(q));
+      tasks = tasks.filter(t => (t.title||'').toLowerCase().includes(q) || (t.desc||'').toLowerCase().includes(q));
     }
-    if (this.filters.status) tasks = tasks.filter(t => this.getEffectiveStatus(t) === this.filters.status);
+    if (this.filters.status) {
+      tasks = tasks.filter(t => effectiveStatus(t) === this.filters.status || t.status === this.filters.status);
+    }
     if (this.filters.priority) tasks = tasks.filter(t => t.priority === this.filters.priority);
     if (this.filters.category) tasks = tasks.filter(t => t.category === this.filters.category);
-    if (this.filters.assignedBy) tasks = tasks.filter(t => t.assignedBy === this.filters.assignedBy);
     return tasks.sort((a,b) => {
       if (a.pinned && !b.pinned) return -1;
       if (!a.pinned && b.pinned) return 1;
-      const pd = {urgent:0,high:1,medium:2,low:3};
+      const pd={urgent:0,high:1,medium:2,low:3};
       return (pd[a.priority]||9)-(pd[b.priority]||9);
     });
   },
 
-  getEffectiveStatus(task) {
-    if (task.status !== 'completed' && task.dueDate && new Date(task.dueDate) < new Date()) {
-      const today = new Date(); today.setHours(0,0,0,0);
-      if (new Date(task.dueDate) < today) return 'overdue';
-    }
-    return task.status;
-  },
-
-  getStats() {
+  stats() {
     const t = this.tasks;
     return {
-      total: t.length,
-      pending: t.filter(x => x.status === 'not-started').length,
-      inprogress: t.filter(x => x.status === 'in-progress').length,
-      blocked: t.filter(x => x.status === 'blocked').length,
-      completed: t.filter(x => x.status === 'completed').length,
-      overdue: t.filter(x => this.getEffectiveStatus(x) === 'overdue').length,
-      onhold: t.filter(x => x.status === 'on-hold').length,
+      total:     t.length,
+      pending:   t.filter(x=>x.status==='not-started').length,
+      inprogress:t.filter(x=>x.status==='in-progress').length,
+      blocked:   t.filter(x=>x.status==='blocked').length,
+      completed: t.filter(x=>x.status==='completed').length,
+      overdue:   t.filter(x=>effectiveStatus(x)==='overdue').length,
     };
   },
 
-  getCollaboratorName(id) {
-    if (id === 'me') return this.user?.name || 'Me';
-    const c = this.collaborators.find(x => x.id === id);
-    return c ? c.name : 'Unknown';
-  },
-  getCollaborator(id) {
-    if (id === 'me') return { ...this.user, color: '#6c63ff' };
-    return this.collaborators.find(x => x.id === id) || { name: 'Unknown', avatar: '??', color: '#9899b0' };
-  },
-  unreadNotif() { return this.notifications.filter(n => !n.read).length; },
+  unread() { return this.tasks.filter(t=>t._newForAdmin && this.isAdmin).length; },
 };
 
 // ============================================================
-// RENDER ENGINE
+// URL PARSING
 // ============================================================
-const App = document.getElementById('app');
-let currentModal = null;
+const urlParams = new URLSearchParams(window.location.search);
+const urlShare  = urlParams.get('share');
+const isCollabLink = !!(urlShare);
 
-function render() {
-  if (!State.user && !State.isExternal) {
-    App.innerHTML = renderLogin();
-    bindLogin();
+// ============================================================
+// FIREBASE INIT + AUTH
+// ============================================================
+waitForFb(fb => {
+  S.fb = fb;
+
+  // Check if config is still placeholder
+  if (fb.ADMIN_UID === 'REPLACE_AFTER_FIRST_LOGIN') {
+    root().innerHTML = renderSetupGuide();
     return;
   }
-  App.innerHTML = `
-    <div class="sidebar-overlay ${State.sidebarOpen ? 'open' : ''}" onclick="closeSidebar()"></div>
-    <div class="app ${State.isExternal ? 'external-view' : ''}">
-      ${renderSidebar()}
-      <div class="main">
-        ${renderTopbar()}
-        <div class="content page-section">
-          ${renderView()}
-        </div>
-      </div>
-    </div>
-    ${renderTaskModal()}
-    ${renderShareModal()}
-    ${renderNotifPanel()}
-  `;
-  bindAll();
+
+  // Collab link flow — no auth needed
+  if (isCollabLink) {
+    if (urlShare !== fb.SHARE_TOKEN) {
+      root().innerHTML = `<div class="loading-screen"><div style="color:var(--red);font-size:15px;font-weight:600">❌ Invalid share link.</div></div>`;
+      return;
+    }
+    // Get or create collabId for this browser
+    let cid = localStorage.getItem('tf_collabId');
+    let cname = localStorage.getItem('tf_collabName');
+    if (!cid) {
+      cid = 'collab_' + uid();
+      localStorage.setItem('tf_collabId', cid);
+    }
+    S.isCollab = true;
+    S.collabId = cid;
+    S.collabName = cname || '';
+    if (!cname) {
+      root().innerHTML = renderAskName();
+      return;
+    }
+    startCollabApp();
+    return;
+  }
+
+  // Admin auth flow
+  fb.onAuthStateChanged(fb.auth, user => {
+    if (user && user.uid === fb.ADMIN_UID) {
+      S.user = user;
+      S.isAdmin = true;
+      startAdminApp();
+    } else if (user) {
+      // Signed in but not admin — sign out
+      fb.signOut(fb.auth);
+      root().innerHTML = renderLogin('Not authorised. Only the admin can sign in here.');
+      bindLogin();
+    } else {
+      root().innerHTML = renderLogin('');
+      bindLogin();
+    }
+  });
+});
+
+// ============================================================
+// FIRESTORE LISTENER
+// ============================================================
+function subscribeToTasks() {
+  const { db, collection, query, where, orderBy, onSnapshot } = S.fb;
+
+  let q;
+  if (S.isCollab) {
+    // Collaborators only see their own tasks
+    q = query(collection(db,'tasks'), where('assignedById','==',S.collabId));
+  } else {
+    // Admin sees all
+    q = collection(db,'tasks');
+  }
+
+  if (S.unsubTasks) S.unsubTasks();
+  S.unsubTasks = onSnapshot(q, snap => {
+    S.tasks = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    render();
+  }, err => {
+    console.error('Firestore error:', err);
+    toast('Database error: ' + err.message, 'error');
+  });
 }
 
 // ============================================================
-// LOGIN
+// START APP
 // ============================================================
-function renderLogin() {
+function startAdminApp()  { subscribeToTasks(); render(); }
+function startCollabApp() { subscribeToTasks(); render(); }
+
+// ============================================================
+// SETUP GUIDE (shown when config not filled)
+// ============================================================
+function renderSetupGuide() {
   return `
-  <div class="login-page">
-    <div class="login-bg"></div>
-    <div class="login-card fade-in">
-      <div class="login-logo">
-        <div class="login-logo-mark">T</div>
-        <div>
-          <div class="login-logo-text">TaskFlow</div>
-          <div style="font-size:11px;color:var(--text3);letter-spacing:1px">PERSONAL TASK MANAGER</div>
-        </div>
+  <div class="loading-screen" style="padding:40px;max-width:640px;margin:auto;align-items:flex-start;text-align:left">
+    <div style="width:100%">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:28px">
+        <div class="logo-mark" style="width:40px;height:40px;font-size:18px">T</div>
+        <div style="font-size:22px;font-weight:700">TaskFlow — Setup Required</div>
       </div>
-      <div class="login-subtitle">Your personal command center for tasks,<br>priorities, and execution.</div>
-      <div class="login-tab-wrap">
-        <div class="login-tab active" id="ltab-login" onclick="switchLoginTab('login')">Sign In</div>
-        <div class="login-tab" id="ltab-signup" onclick="switchLoginTab('signup')">Sign Up</div>
+      <div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:24px;color:var(--red);font-size:13px">
+        ⚠️ Firebase config not yet filled in. Follow the steps below.
       </div>
-      <div class="login-form" id="loginForm">
-        <div class="form-group">
-          <label class="form-label">Full Name</label>
-          <input class="form-input" id="inp-name" type="text" placeholder="Your name" style="display:none">
-          <input class="form-input" id="inp-email" type="email" placeholder="your@email.com">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Password</label>
-          <input class="form-input" id="inp-pass" type="password" placeholder="••••••••">
-        </div>
-        <button class="btn-primary" style="width:100%;justify-content:center;padding:11px" id="loginBtn">Sign In →</button>
-        <div class="login-divider">or continue with</div>
-        <button class="login-btn-google" onclick="loginDemo()">
-          <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#EA4335" d="M17 9.2c0-.6-.1-1.3-.2-1.9H9v3.6h4.5c-.2 1-.8 1.9-1.7 2.5v2h2.7c1.6-1.5 2.5-3.7 2.5-6.2z"/><path fill="#4285F4" d="M9 18c2.4 0 4.4-.8 5.9-2.2l-2.7-2c-.8.5-1.9.8-3.2.8-2.4 0-4.5-1.6-5.2-3.8H1v2.1C2.5 16.2 5.6 18 9 18z"/><path fill="#FBBC05" d="M3.8 10.7c-.2-.6-.3-1.1-.3-1.7s.1-1.2.3-1.7V5.2H1C.4 6.3 0 7.6 0 9s.4 2.7 1 3.8l2.8-2.1z"/><path fill="#34A853" d="M9 3.6c1.3 0 2.5.5 3.4 1.3L15 2.3C13.5.9 11.4 0 9 0 5.6 0 2.5 1.8 1 4.4l2.8 2.1C4.5 4.7 6.6 3.6 9 3.6z"/></svg>
-          Continue as Demo User
-        </button>
-      </div>
-      <div class="login-note">
-        External collaborator? Use the shared link provided to you.<br>
-        <span class="login-link" onclick="showExternalAccess()">Enter as collaborator →</span>
+      <div style="display:flex;flex-direction:column;gap:20px;font-size:13px;color:var(--text2);line-height:1.8">
+        <div><strong style="color:var(--text);font-size:14px">Step 1 — Create a Firebase project</strong><br>
+        Go to <a href="https://console.firebase.google.com" target="_blank" style="color:var(--accent2)">console.firebase.google.com</a> → Add project → give it any name → Continue (disable Analytics if you want) → Create.</div>
+        <div><strong style="color:var(--text);font-size:14px">Step 2 — Enable Authentication</strong><br>
+        In your project: Build → Authentication → Get started → Sign-in method → Email/Password → Enable → Save.</div>
+        <div><strong style="color:var(--text);font-size:14px">Step 3 — Create Firestore Database</strong><br>
+        Build → Firestore Database → Create database → Start in <em>test mode</em> → Next → Enable.</div>
+        <div><strong style="color:var(--text);font-size:14px">Step 4 — Get your config</strong><br>
+        Project Settings (gear icon) → Your apps → Web app (&lt;/&gt;) → Register app → copy the <code style="background:var(--bg3);padding:2px 6px;border-radius:4px">firebaseConfig</code> object.</div>
+        <div><strong style="color:var(--text);font-size:14px">Step 5 — Edit index.html</strong><br>
+        Open your <code style="background:var(--bg3);padding:2px 6px;border-radius:4px">index.html</code> → find the <code style="background:var(--bg3);padding:2px 6px;border-radius:4px">firebaseConfig</code> block near the top → replace all the <code>REPLACE_WITH_…</code> values with your actual values.</div>
+        <div><strong style="color:var(--text);font-size:14px">Step 6 — Set your Share Token</strong><br>
+        In the same file, set <code style="background:var(--bg3);padding:2px 6px;border-radius:4px">SHARE_TOKEN</code> to any private word you choose — e.g. <code>"arjun2024"</code>. This is what you'll share with collaborators.</div>
+        <div><strong style="color:var(--text);font-size:14px">Step 7 — Deploy & sign up</strong><br>
+        Push to GitHub. Open your live site → sign up with your email & password (first time). Then open the browser console (F12) and type:<br>
+        <code style="background:var(--bg3);padding:4px 8px;border-radius:4px;display:inline-block;margin-top:6px">firebase.auth().currentUser.uid</code><br>
+        Copy that UID and paste it as <code>ADMIN_UID</code> in index.html. Push again.</div>
+        <div><strong style="color:var(--text);font-size:14px">Step 8 — Secure Firestore</strong><br>
+        In Firebase → Firestore → Rules → replace with:<br>
+        <pre style="background:var(--bg3);padding:12px;border-radius:var(--radius-sm);font-size:12px;margin-top:8px;overflow-x:auto">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /tasks/{taskId} {
+      allow read, write: if request.auth != null; // admin writes
+      allow read, write: if true; // collabs write (tighten later)
+    }
+  }
+}</pre>
+        For now leave as test mode (allows all reads/writes for 30 days — fine to start).</div>
       </div>
     </div>
   </div>`;
 }
 
-function switchLoginTab(tab) {
-  const nameInp = document.getElementById('inp-name');
-  const btn = document.getElementById('loginBtn');
-  document.getElementById('ltab-login').classList.toggle('active', tab === 'login');
-  document.getElementById('ltab-signup').classList.toggle('active', tab === 'signup');
-  if (nameInp) nameInp.style.display = tab === 'signup' ? 'block' : 'none';
-  if (btn) btn.textContent = tab === 'signup' ? 'Create Account →' : 'Sign In →';
+// ============================================================
+// ASK COLLABORATOR NAME
+// ============================================================
+function renderAskName() {
+  return `
+  <div class="collab-page">
+    <div class="collab-card">
+      <div style="font-size:40px;margin-bottom:16px">👋</div>
+      <div style="font-size:20px;font-weight:700;margin-bottom:8px">You've been invited</div>
+      <div style="color:var(--text2);font-size:13px;margin-bottom:28px;line-height:1.6">Enter your name so the task owner knows who is assigning tasks.</div>
+      <input class="form-input" id="collabNameInp" placeholder="Your full name" style="margin-bottom:14px;text-align:center;font-size:15px">
+      <button class="btn-primary" style="width:100%;justify-content:center;padding:11px" onclick="saveCollabName()">Continue →</button>
+    </div>
+  </div>`;
 }
 
-function showExternalAccess() {
-  const token = prompt('Enter your share token (from the admin):');
-  if (token && token === DB.get('shareToken', '')) {
-    const name = prompt('Enter your name:');
-    if (name) {
-      const collabs = DB.get('collaborators', []);
-      let collab = collabs.find(c => c.name.toLowerCase() === name.toLowerCase());
-      if (!collab) {
-        collab = { id: 'guest_' + uid().slice(0,6), name, email: '', role: 'collaborator', avatar: name.slice(0,2).toUpperCase(), color: '#9899b0' };
-        collabs.push(collab);
-        DB.set('collaborators', collabs);
-      }
-      window.location.search = `?share=${token}&collab=${collab.id}`;
+function saveCollabName() {
+  const name = ($('collabNameInp')?.value||'').trim();
+  if (!name) { toast('Please enter your name','error'); return; }
+  localStorage.setItem('tf_collabName', name);
+  S.collabName = name;
+  startCollabApp();
+}
+
+// ============================================================
+// LOGIN
+// ============================================================
+function renderLogin(errMsg) {
+  return `
+  <div class="login-page">
+    <div class="login-bg"></div>
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="login-logo-mark">T</div>
+        <div>
+          <div style="font-size:22px;font-weight:700;letter-spacing:-.5px">TaskFlow</div>
+          <div style="font-size:11px;color:var(--text3);letter-spacing:1px">PERSONAL TASK MANAGER</div>
+        </div>
+      </div>
+      ${errMsg ? `<div style="background:var(--red-bg);border:1px solid var(--red);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:16px;color:var(--red);font-size:13px">⚠️ ${esc(errMsg)}</div>` : ''}
+      <div class="login-tab-wrap" id="loginTabWrap">
+        <div class="login-tab active" id="ltab-in" onclick="switchLoginTab('in')">Sign In</div>
+        <div class="login-tab" id="ltab-up" onclick="switchLoginTab('up')">Sign Up</div>
+      </div>
+      <div class="login-form">
+        <div class="form-group" id="nameGroup" style="display:none">
+          <label class="form-label">Full Name</label>
+          <input class="form-input" id="inp-name" placeholder="Your name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input class="form-input" id="inp-email" type="email" placeholder="you@example.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input class="form-input" id="inp-pass" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doAuth()">
+        </div>
+        <div id="authErr" style="color:var(--red);font-size:12px;display:none"></div>
+        <button class="btn-primary" id="authBtn" style="width:100%;justify-content:center;padding:11px" onclick="doAuth()">Sign In →</button>
+      </div>
+      <div style="font-size:12px;color:var(--text3);text-align:center;margin-top:20px;line-height:1.6">
+        Collaborators: use the shared link provided to you.
+      </div>
+    </div>
+  </div>`;
+}
+
+function bindLogin() {}
+let loginMode = 'in';
+function switchLoginTab(mode) {
+  loginMode = mode;
+  $('ltab-in')?.classList.toggle('active', mode==='in');
+  $('ltab-up')?.classList.toggle('active', mode==='up');
+  const ng = $('nameGroup');
+  if (ng) ng.style.display = mode==='up' ? 'flex' : 'none';
+  const btn = $('authBtn');
+  if (btn) btn.textContent = mode==='up' ? 'Create Account →' : 'Sign In →';
+}
+
+async function doAuth() {
+  const { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword } = S.fb;
+  const email = ($('inp-email')?.value||'').trim();
+  const pass  = ($('inp-pass')?.value||'').trim();
+  const errEl = $('authErr');
+  if (!email||!pass) { if(errEl){errEl.style.display='block';errEl.textContent='Enter email and password.';} return; }
+  const btn = $('authBtn');
+  if (btn) { btn.disabled=true; btn.textContent='…'; }
+  try {
+    if (loginMode==='up') {
+      await createUserWithEmailAndPassword(auth, email, pass);
+    } else {
+      await signInWithEmailAndPassword(auth, email, pass);
     }
-  } else if (token) {
-    toast('Invalid share token', 'error');
+  } catch(e) {
+    if (errEl) { errEl.style.display='block'; errEl.textContent=e.message; }
+    if (btn) { btn.disabled=false; btn.textContent=loginMode==='up'?'Create Account →':'Sign In →'; }
   }
 }
 
-function bindLogin() {
-  const btn = document.getElementById('loginBtn');
-  if (btn) btn.onclick = loginDemo;
-}
-
-function loginDemo() {
-  seed();
-  const user = DB.get('user', null);
-  if (!user) {
-    const nameInp = document.getElementById('inp-name');
-    const name = (nameInp && nameInp.value) || 'Arjun Sharma';
-    DB.set('user', { id:'me', name, email:'demo@taskflow.app', role:'admin', avatar: name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase() });
-  }
-  State.user = DB.get('user');
-  State.collaborators = DB.get('collaborators', []);
-  State.tasks = DB.get('tasks', []);
-  State.notifications = DB.get('notifications', []);
-  State.shareToken = DB.get('shareToken', '');
-  render();
-  toast('Welcome back! 👋', 'success');
+// ============================================================
+// MAIN RENDER
+// ============================================================
+function render() {
+  root().innerHTML = `
+    <div class="sidebar-overlay ${S.sidebarOpen?'open':''}" onclick="closeSidebar()"></div>
+    <div class="app">
+      ${renderSidebar()}
+      <div class="main">
+        ${renderTopbar()}
+        <div class="content fade-in">${renderView()}</div>
+      </div>
+    </div>
+    ${renderTaskModal()}
+    ${renderShareModalHtml()}
+    ${renderNotifPanel()}
+  `;
 }
 
 // ============================================================
 // SIDEBAR
 // ============================================================
 function renderSidebar() {
-  const stats = State.getStats();
-  const nav = [
-    { id:'dashboard', icon:'⬛', label:'Dashboard' },
-    { id:'list', icon:'☰', label:'All Tasks' },
-    { id:'kanban', icon:'⊞', label:'Kanban Board' },
-    { id:'calendar', icon:'📅', label:'Calendar' },
-    { id:'today', icon:'⚡', label:'Due Today', badge: State.tasks.filter(t=>t.dueDate && fmtRel(t.dueDate)==='Today' && t.status!=='completed').length || null },
-    { id:'assigned-by-others', icon:'👤', label:'Assigned by Others', badge: State.tasks.filter(t=>t.assignedBy!=='me').length || null, badgeCls:'' },
-    { id:'insights', icon:'📊', label:'Insights' },
+  const stats = S.stats();
+  const adminNav = [
+    {id:'dashboard',icon:'⬛',label:'Dashboard'},
+    {id:'list',icon:'☰',label:'All Tasks'},
+    {id:'kanban',icon:'⊞',label:'Kanban Board'},
+    {id:'calendar',icon:'📅',label:'Calendar'},
+    {id:'today',icon:'⚡',label:'Due Today', badge: S.tasks.filter(t=>t.dueDate&&fmtRel(t.dueDate)==='Today'&&t.status!=='completed').length||null},
+    {id:'by-others',icon:'👤',label:'By Others', badge: S.tasks.filter(t=>t.assignedById!=='admin').length||null},
+    {id:'insights',icon:'📊',label:'Insights'},
   ];
-  const overdue = stats.overdue;
+  const collabNav = [
+    {id:'list',icon:'☰',label:'Tasks I Assigned'},
+    {id:'kanban',icon:'⊞',label:'Board View'},
+  ];
+  const nav = S.isAdmin ? adminNav : collabNav;
+  const displayName = S.isAdmin ? (S.user?.email||'Admin') : S.collabName;
+  const initials = S.isAdmin ? 'ME' : getInitials(S.collabName);
 
   return `
-  <div class="sidebar ${State.sidebarOpen ? 'open' : ''}">
+  <div class="sidebar ${S.sidebarOpen?'open':''}">
     <div class="sidebar-logo">
       <div class="logo-mark">T</div>
       <div>
         <div class="logo-text">TaskFlow</div>
-        <div class="logo-sub">v2.0</div>
+        <div style="font-size:10px;color:var(--text3);letter-spacing:1px">${S.isCollab?'COLLABORATOR':'ADMIN'}</div>
       </div>
     </div>
     <div class="sidebar-nav">
       <div class="nav-section">
         <div class="nav-label">Navigation</div>
         ${nav.map(n=>`
-          <div class="nav-item ${State.view===n.id?'active':''}" onclick="navigate('${n.id}')">
-            <span class="nav-icon">${n.icon}</span>
-            <span>${n.label}</span>
-            ${n.badge ? `<span class="nav-badge ${n.badgeCls||''}">${n.badge}</span>` : ''}
+          <div class="nav-item ${S.view===n.id?'active':''}" onclick="navigate('${n.id}')">
+            <span class="nav-icon">${n.icon}</span><span>${n.label}</span>
+            ${n.badge?`<span class="nav-badge">${n.badge}</span>`:''}
           </div>`).join('')}
       </div>
+      ${S.isAdmin ? `
       <div class="nav-section">
-        <div class="nav-label">Quick Status</div>
-        ${overdue ? `<div class="nav-item" onclick="setFilter('status','overdue');navigate('list')">
-          <span class="nav-icon">🔴</span><span>Overdue</span><span class="nav-badge">${overdue}</span>
-        </div>` : ''}
-        <div class="nav-item" onclick="setFilter('status','blocked');navigate('list')">
-          <span class="nav-icon">🟠</span><span>Blocked</span>
-          ${stats.blocked ? `<span class="nav-badge warn">${stats.blocked}</span>` : ''}
-        </div>
-        <div class="nav-item" onclick="navigate('list');clearFilters()">
-          <span class="nav-icon">✅</span><span>Completed</span>
-          ${stats.completed ? `<span class="nav-badge" style="background:var(--green)">${stats.completed}</span>` : ''}
-        </div>
+        <div class="nav-label">Quick Filters</div>
+        ${stats.overdue?`<div class="nav-item" onclick="quickFilter('overdue')"><span class="nav-icon">🔴</span><span>Overdue</span><span class="nav-badge">${stats.overdue}</span></div>`:''}
+        <div class="nav-item" onclick="quickFilter('blocked')"><span class="nav-icon">🟠</span><span>Blocked</span>${stats.blocked?`<span class="nav-badge warn">${stats.blocked}</span>`:''}</div>
       </div>
-      ${!State.isExternal ? `<div class="nav-section">
-        <div class="nav-label">Manage</div>
+      <div class="nav-section">
+        <div class="nav-label">Actions</div>
         <div class="nav-item" onclick="openShareModal()"><span class="nav-icon">🔗</span><span>Share Link</span></div>
         <div class="nav-item" onclick="exportCSV()"><span class="nav-icon">⬇</span><span>Export CSV</span></div>
-        <div class="nav-item" onclick="openNewTask()"><span class="nav-icon">✚</span><span>New Task</span></div>
       </div>` : ''}
     </div>
     <div class="sidebar-footer">
       <div class="user-card">
-        <div class="avatar">${State.isExternal ? State.externalCollaborator?.avatar : (State.user?.avatar||'ME')}</div>
+        <div class="avatar">${initials}</div>
         <div class="user-info">
-          <div class="user-name">${State.isExternal ? State.externalCollaborator?.name : State.user?.name}</div>
-          <div class="user-role">${State.isExternal ? 'Collaborator' : 'Admin'}</div>
+          <div class="user-name">${esc(displayName)}</div>
+          <div class="user-role">${S.isAdmin?'Admin':'Collaborator'}</div>
         </div>
-        ${!State.isExternal ? `<button class="theme-toggle" onclick="logout()" title="Logout">⏻</button>` : ''}
+        ${S.isAdmin?`<div class="logout-btn" onclick="doLogout()" title="Sign out">⏻</div>`:''}
       </div>
     </div>
   </div>`;
@@ -752,217 +781,187 @@ function renderSidebar() {
 // TOPBAR
 // ============================================================
 function renderTopbar() {
-  const titles = { dashboard:'Dashboard', list:'All Tasks', kanban:'Kanban Board', calendar:'Calendar', today:"Today's Tasks", 'assigned-by-others':'Assigned by Others', insights:'Insights' };
-  const unread = State.unreadNotif();
+  const titles={dashboard:'Dashboard',list:S.isCollab?'Tasks I Assigned':'All Tasks',kanban:'Kanban Board',calendar:'Calendar',today:"Today's Tasks",'by-others':'Assigned by Others',insights:'Insights'};
   return `
   <div class="topbar">
-    <div class="topbar-left">
-      <div class="hamburger" onclick="toggleSidebar()"><span></span><span></span><span></span></div>
-      <div class="page-title">${titles[State.view]||'TaskFlow'}</div>
-    </div>
-    <div class="search-wrap" style="flex:1;max-width:280px">
+    <div class="hamburger" onclick="toggleSidebar()"><span></span><span></span><span></span></div>
+    <div class="page-title">${titles[S.view]||'TaskFlow'}</div>
+    <div class="search-wrap" style="margin-left:16px">
       <span class="search-icon">🔍</span>
-      <input class="search-input" placeholder="Search tasks..." value="${escHtml(State.searchQ)}" oninput="doSearch(this.value)">
+      <input class="search-input" placeholder="Search…" value="${esc(S.searchQ)}" oninput="S.searchQ=this.value;renderContent()">
     </div>
     <div class="topbar-right">
-      ${!State.isExternal ? `
-        <button class="btn-icon" onclick="toggleNotif()" title="Notifications">
-          🔔
-          ${unread ? '<div class="notif-dot"></div>' : ''}
-        </button>
-        <button class="btn-primary" onclick="openNewTask()"><span>+</span><span>New Task</span></button>
-      ` : `<span style="font-size:12px;color:var(--text3);padding:0 8px">Collaborator View</span>
-        <button class="btn-primary" onclick="openNewTask()">+ Assign Task</button>`}
+      ${S.isAdmin?`
+        <button class="btn-icon" onclick="toggleNotif()" title="Notifications">🔔${S.unread()?'<div class="notif-dot"></div>':''}</button>
+      `:''}
+      <button class="btn-primary" onclick="openNewTask()">+ New Task</button>
     </div>
   </div>`;
+}
+
+function renderContent() {
+  const el = document.querySelector('.content');
+  if (el) el.innerHTML = renderView();
 }
 
 // ============================================================
 // VIEWS
 // ============================================================
 function renderView() {
-  switch (State.view) {
+  switch(S.view) {
     case 'dashboard': return renderDashboard();
-    case 'list': return renderList();
-    case 'kanban': return renderKanban();
-    case 'calendar': return renderCalendar();
-    case 'today': return renderToday();
-    case 'assigned-by-others': return renderAssignedByOthers();
-    case 'insights': return renderInsights();
-    default: return renderDashboard();
+    case 'list':      return renderList();
+    case 'kanban':    return renderKanban();
+    case 'calendar':  return renderCalendar();
+    case 'today':     return renderToday();
+    case 'by-others': return renderByOthers();
+    case 'insights':  return renderInsights();
+    default:          return renderDashboard();
   }
 }
 
 // DASHBOARD
 function renderDashboard() {
-  const stats = State.getStats();
-  const recentTasks = [...State.tasks].sort((a,b) => new Date(b.updatedAt)-new Date(a.updatedAt)).slice(0,5);
-  const todayTasks = State.tasks.filter(t => t.dueDate && fmtRel(t.dueDate) === 'Today' && t.status !== 'completed');
-
+  const st = S.stats();
+  const recent = [...S.tasks].sort((a,b)=>(b.updatedAt?.seconds||0)-(a.updatedAt?.seconds||0)).slice(0,5);
+  const todayTasks = S.tasks.filter(t=>t.dueDate&&fmtRel(t.dueDate)==='Today'&&t.status!=='completed');
   return `
   <div class="stats-grid">
-    ${statCard('Total Tasks', stats.total, '📋', 'total', 'All tasks')}
-    ${statCard('Pending', stats.pending, '⏳', 'pending', 'Not started')}
-    ${statCard('In Progress', stats.inprogress, '🔵', 'inprogress', 'Active tasks')}
-    ${statCard('Overdue', stats.overdue, '🔴', 'overdue', 'Past due date')}
-    ${statCard('Completed', stats.completed, '✅', 'completed', 'Done')}
-    ${statCard('Blocked', stats.blocked, '🚫', 'blocked', 'Need attention')}
+    ${SC('Total','📋',st.total,'total')}
+    ${SC('Pending','⏳',st.pending,'pending')}
+    ${SC('In Progress','🔵',st.inprogress,'inprogress')}
+    ${SC('Overdue','🔴',st.overdue,'overdue')}
+    ${SC('Completed','✅',st.completed,'completed')}
+    ${SC('Blocked','🚫',st.blocked,'blocked')}
   </div>
-  ${todayTasks.length ? `
-  <div class="card" style="margin-bottom:24px">
+  ${todayTasks.length?`
+  <div class="card" style="margin-bottom:22px">
     <div class="section-header">
       <div class="section-title">⚡ Due Today (${todayTasks.length})</div>
       <button class="btn-ghost" onclick="navigate('today')">View all →</button>
     </div>
-    ${renderTaskRows(todayTasks.slice(0,3), true)}
-  </div>` : ''}
+    ${miniTable(todayTasks.slice(0,3))}
+  </div>`:''}
   <div class="card">
     <div class="section-header">
       <div class="section-title">🕐 Recently Updated</div>
       <button class="btn-ghost" onclick="navigate('list')">View all →</button>
     </div>
-    ${renderTaskRows(recentTasks, true)}
+    ${recent.length ? miniTable(recent) : emptyState('No tasks yet','Create your first task!')}
   </div>`;
 }
-
-function statCard(label, num, icon, cls, sub) {
-  return `<div class="stat-card ${cls}" onclick="setFilter('status','${cls}');navigate('list')">
-    <div class="stat-icon">${icon}</div>
+function SC(label, icon, num, cls) {
+  return `<div class="stat-card ${cls}" onclick="quickFilter('${cls}')">
+    <div style="font-size:20px;margin-bottom:10px">${icon}</div>
     <div class="stat-num">${num}</div>
     <div class="stat-label">${label}</div>
-    <div class="stat-trend">${sub}</div>
   </div>`;
 }
 
-// LIST VIEW
+// LIST
 function renderList() {
-  const tasks = State.getFilteredTasks();
-  const categories = [...new Set(State.tasks.map(t=>t.category).filter(Boolean))];
-  const collabs = State.collaborators;
-
+  const tasks = S.filteredTasks();
+  const cats = [...new Set(S.tasks.map(t=>t.category).filter(Boolean))];
   return `
-  <div class="section-header">
+  <div class="section-header" style="flex-wrap:wrap;gap:10px">
     <div class="filter-bar">
-      <span style="font-size:12px;color:var(--text3)">Filter:</span>
-      ${['','not-started','in-progress','blocked','completed','on-hold','overdue'].map(s => `
-        <div class="filter-chip ${State.filters.status===s&&s?'active':''}" onclick="setFilter('status','${s}')">${s?statusLabel(s):'All'}</div>`).join('')}
+      ${['','not-started','in-progress','blocked','completed','on-hold','overdue'].map(s=>`
+        <div class="filter-chip ${S.filters.status===s&&s?'active':''}" onclick="setFilter('status','${s}')">${s?statusLabel(s):'All'}</div>`).join('')}
     </div>
-    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
       <select class="select-filter" onchange="setFilter('priority',this.value)">
         <option value="">All Priorities</option>
-        <option value="urgent" ${State.filters.priority==='urgent'?'selected':''}>Urgent</option>
-        <option value="high" ${State.filters.priority==='high'?'selected':''}>High</option>
-        <option value="medium" ${State.filters.priority==='medium'?'selected':''}>Medium</option>
-        <option value="low" ${State.filters.priority==='low'?'selected':''}>Low</option>
+        ${['urgent','high','medium','low'].map(p=>`<option value="${p}" ${S.filters.priority===p?'selected':''}>${p.charAt(0).toUpperCase()+p.slice(1)}</option>`).join('')}
       </select>
       <select class="select-filter" onchange="setFilter('category',this.value)">
         <option value="">All Categories</option>
-        ${categories.map(c=>`<option value="${c}" ${State.filters.category===c?'selected':''}>${c}</option>`).join('')}
+        ${cats.map(c=>`<option value="${c}" ${S.filters.category===c?'selected':''}>${c}</option>`).join('')}
       </select>
-      <select class="select-filter" onchange="setFilter('assignedBy',this.value)">
-        <option value="">All Assigners</option>
-        <option value="me">Self-assigned</option>
-        ${collabs.map(c=>`<option value="${c.id}" ${State.filters.assignedBy===c.id?'selected':''}>${c.name}</option>`).join('')}
-      </select>
-      ${Object.values(State.filters).some(v=>v) ? `<button class="btn-ghost" onclick="clearFilters()">✕ Clear</button>` : ''}
+      ${Object.values(S.filters).some(v=>v)?`<button class="btn-ghost" onclick="clearFilters()">✕ Clear</button>`:''}
     </div>
   </div>
   <div class="card" style="overflow-x:auto">
-    ${tasks.length ? renderTaskTable(tasks) : emptyState('No tasks found', 'Try adjusting filters or create a new task')}
+    ${tasks.length ? fullTable(tasks) : emptyState('No tasks found','Adjust filters or create a new task')}
   </div>`;
 }
 
-function renderTaskTable(tasks) {
+function fullTable(tasks) {
   return `<table class="task-table">
-    <thead>
-      <tr>
-        <th style="width:32px"></th>
-        <th>Task</th>
-        <th>Status</th>
-        <th>Priority</th>
-        <th>Assigned By</th>
-        <th>Due Date</th>
-        <th>Progress</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      ${tasks.map(t => `
-        <tr onclick="openTask('${t.id}')">
-          <td><span class="${t.pinned?'pin-star':''}" title="${t.pinned?'Pinned':''}">
-            ${t.pinned?'★':''}${t.recurring?'<span class="recurring-tag">↺</span>':''}
-          </span></td>
-          <td class="task-title-cell">
-            <div class="task-title">${escHtml(t.title)}</div>
-            <div class="task-desc-preview">${escHtml((t.desc||'').slice(0,60))}</div>
-          </td>
-          <td>${statusBadge(State.getEffectiveStatus(t))}</td>
-          <td>${priorityBadge(t.priority)}</td>
-          <td>${assigneeChip(t.assignedBy)}</td>
-          <td><span class="due-date ${dueCls(t.dueDate,t.status)}">${fmtRel(t.dueDate)||'—'}</span></td>
-          <td style="min-width:80px">
-            <div class="progress-track" style="margin:0"><div class="progress-fill" style="width:${t.progress||0}%"></div></div>
-            <div class="progress-label">${t.progress||0}%</div>
-          </td>
-          <td onclick="event.stopPropagation()">
-            <div class="actions-cell">
-              <button class="action-btn" onclick="quickStatus('${t.id}')" title="Change status">↺</button>
-              <button class="action-btn" onclick="togglePin('${t.id}')" title="${t.pinned?'Unpin':'Pin'}">★</button>
-              <button class="action-btn" onclick="deleteTask('${t.id}')" title="Delete" style="color:var(--red)">✕</button>
-            </div>
-          </td>
-        </tr>`).join('')}
+    <thead><tr>
+      <th>Task</th><th>Status</th><th>Priority</th>
+      ${S.isAdmin?'<th>Assigned By</th>':''}
+      <th>Due Date</th><th>Progress</th><th></th>
+    </tr></thead>
+    <tbody>${tasks.map(t=>`
+      <tr onclick="openTask('${t.id}')">
+        <td>
+          <div class="task-title">${t.pinned?'★ ':''}${esc(t.title)}</div>
+          <div class="task-desc-preview">${esc((t.desc||'').slice(0,55))}${(t.desc||'').length>55?'…':''}</div>
+        </td>
+        <td>${statusBadge(effectiveStatus(t))}</td>
+        <td>${priorityBadge(t.priority)}</td>
+        ${S.isAdmin?`<td><span style="font-size:12px;color:var(--text2)">${esc(t.assignedByName||'Self')}</span></td>`:''}
+        <td><span class="due-date ${dueCls(t.dueDate,t.status)}">${fmtRel(t.dueDate)||'—'}</span></td>
+        <td style="min-width:80px">
+          <div class="progress-track"><div class="progress-fill" style="width:${t.progress||0}%"></div></div>
+          <div class="progress-label">${t.progress||0}%</div>
+        </td>
+        <td onclick="event.stopPropagation()">
+          <div style="display:flex;gap:4px">
+            ${S.isAdmin?`
+              <button style="padding:5px 8px;font-size:11px;background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:6px" onclick="quickCycleStatus('${t.id}')">↺</button>
+              <button style="padding:5px 8px;font-size:11px;background:var(--bg3);border:1px solid var(--border);color:var(--text2);border-radius:6px" onclick="togglePin('${t.id}')">★</button>
+            `:''}
+          </div>
+        </td>
+      </tr>`).join('')}
     </tbody>
   </table>`;
 }
 
-function renderTaskRows(tasks, compact) {
+function miniTable(tasks) {
   return `<table class="task-table">
     <thead><tr><th>Task</th><th>Status</th><th>Priority</th><th>Due</th></tr></thead>
     <tbody>${tasks.map(t=>`
       <tr onclick="openTask('${t.id}')">
-        <td class="task-title-cell"><div class="task-title">${escHtml(t.title)}</div></td>
-        <td>${statusBadge(State.getEffectiveStatus(t))}</td>
+        <td><div class="task-title">${esc(t.title)}</div></td>
+        <td>${statusBadge(effectiveStatus(t))}</td>
         <td>${priorityBadge(t.priority)}</td>
         <td><span class="due-date ${dueCls(t.dueDate,t.status)}">${fmtRel(t.dueDate)||'—'}</span></td>
       </tr>`).join('')}
-    </tbody></table>`;
+    </tbody>
+  </table>`;
 }
 
 // KANBAN
 function renderKanban() {
   const cols = [
-    { id:'not-started', label:'Not Started', color:'var(--text3)', icon:'⚪' },
-    { id:'in-progress', label:'In Progress', color:'var(--blue)', icon:'🔵' },
-    { id:'blocked', label:'Blocked', color:'var(--orange)', icon:'🟠' },
-    { id:'on-hold', label:'On Hold', color:'var(--purple)', icon:'🟣' },
-    { id:'completed', label:'Completed', color:'var(--green)', icon:'🟢' },
+    {id:'not-started',label:'Not Started',color:'var(--text3)'},
+    {id:'in-progress', label:'In Progress', color:'var(--blue)'},
+    {id:'blocked',     label:'Blocked',     color:'var(--orange)'},
+    {id:'on-hold',     label:'On Hold',     color:'var(--purple)'},
+    {id:'completed',   label:'Completed',   color:'var(--green)'},
   ];
-  const tasks = State.getFilteredTasks();
+  const tasks = S.filteredTasks();
   return `<div class="kanban-wrap">
-    ${cols.map(col => {
-      const colTasks = tasks.filter(t => t.status === col.id);
+    ${cols.map(col=>{
+      const ct = tasks.filter(t=>t.status===col.id);
       return `<div class="kanban-col">
         <div class="kanban-col-header">
-          <div class="kanban-col-title" style="color:${col.color}">${col.icon} ${col.label}</div>
-          <span class="kanban-count">${colTasks.length}</span>
+          <div class="kanban-col-title" style="color:${col.color}">${col.label}</div>
+          <span class="kanban-count">${ct.length}</span>
         </div>
         <div class="kanban-cards">
-          ${colTasks.map(t=>`
+          ${ct.map(t=>`
             <div class="kanban-card" onclick="openTask('${t.id}')">
-              <div class="kanban-card-title">${t.pinned?'★ ':''}${escHtml(t.title)}</div>
+              <div class="kanban-card-title">${t.pinned?'★ ':''}${esc(t.title)}</div>
               <div class="kanban-card-meta">
                 ${priorityBadge(t.priority)}
-                ${assigneeChip(t.assignedBy)}
-                <span class="kanban-card-due ${dueCls(t.dueDate,t.status)}">${fmtRel(t.dueDate)||'No date'}</span>
+                <span style="font-size:11px;color:var(--text3)">${fmtRel(t.dueDate)||''}</span>
               </div>
-              ${t.progress ? `<div class="progress-wrap">
-                <div class="progress-track"><div class="progress-fill" style="width:${t.progress}%"></div></div>
-                <div class="progress-label">${t.progress}%</div>
-              </div>` : ''}
-            </div>`).join('') || '<div style="color:var(--text3);font-size:12px;text-align:center;padding:12px">No tasks</div>'}
-          <button class="btn-ghost" style="width:100%;justify-content:center;font-size:12px;margin-top:4px" 
-            onclick="openNewTaskWithStatus('${col.id}')">+ Add</button>
+              ${t.progress?`<div style="margin-top:8px"><div class="progress-track"><div class="progress-fill" style="width:${t.progress}%"></div></div></div>`:''}
+            </div>`).join('')||`<div style="color:var(--text3);font-size:12px;text-align:center;padding:10px">Empty</div>`}
+          <button class="btn-ghost" style="width:100%;justify-content:center;font-size:12px;margin-top:2px" onclick="openNewTaskStatus('${col.id}')">+ Add</button>
         </div>
       </div>`;
     }).join('')}
@@ -971,42 +970,25 @@ function renderKanban() {
 
 // CALENDAR
 function renderCalendar() {
-  const year = State.calYear, month = State.calMonth;
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const {calMonth:month,calYear:year} = S;
+  const firstDay = new Date(year,month,1).getDay();
+  const daysInMonth = new Date(year,month+1,0).getDate();
   const today = new Date();
-  const monthName = new Date(year, month).toLocaleString('en', {month:'long',year:'numeric'});
-  const tasksByDate = {};
-  State.tasks.forEach(t => {
-    if (t.dueDate) {
-      const d = t.dueDate.slice(0,10);
-      if (!tasksByDate[d]) tasksByDate[d] = [];
-      tasksByDate[d].push(t);
-    }
-  });
-
-  let cells = '';
-  let day = 1 - firstDay;
-  for (let row = 0; row < 6; row++) {
-    for (let col = 0; col < 7; col++, day++) {
-      const date = new Date(year, month, day);
-      const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-      const isToday = date.toDateString() === today.toDateString();
-      const otherMonth = day < 1 || day > daysInMonth;
-      const dayTasks = (tasksByDate[dateStr] || []).slice(0,3);
-      const displayDay = otherMonth ? new Date(year, month, day).getDate() : day;
-
-      cells += `<div class="cal-day ${otherMonth?'other-month':''} ${isToday?'today':''}">
-        <div class="cal-day-num">${displayDay}</div>
-        ${dayTasks.map(t=>`
-          <div class="cal-task-dot ${priorityBgClass(t.priority)}" onclick="openTask('${t.id}')" title="${escHtml(t.title)}"
-            style="border-radius:4px;padding:2px 4px;font-size:10px;margin-bottom:2px;cursor:pointer">
-            ${escHtml(t.title.slice(0,16))}${t.title.length>16?'…':''}
-          </div>`).join('')}
-      </div>`;
-    }
+  const monthName = new Date(year,month).toLocaleString('en',{month:'long',year:'numeric'});
+  const byDate = {};
+  S.filteredTasks().forEach(t=>{ if(t.dueDate){ if(!byDate[t.dueDate])byDate[t.dueDate]=[]; byDate[t.dueDate].push(t); } });
+  let cells='', day=1-firstDay;
+  for(let r=0;r<6;r++) for(let c=0;c<7;c++,day++) {
+    const d=new Date(year,month,day);
+    const ds=`${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+    const isToday=d.toDateString()===today.toDateString();
+    const other=day<1||day>daysInMonth;
+    const dt=byDate[ds]||[];
+    cells+=`<div class="cal-day ${other?'other-month':''} ${isToday?'today':''}">
+      <div class="cal-day-num">${other?new Date(year,month,day).getDate():day}</div>
+      ${dt.slice(0,2).map(t=>`<div class="cal-task-dot ${{'urgent':'s-overdue','high':'s-blocked','medium':'s-in-progress','low':'s-completed'}[t.priority]||''}" onclick="openTask('${t.id}')" title="${esc(t.title)}">${esc(t.title.slice(0,14))}${t.title.length>14?'…':''}</div>`).join('')}
+    </div>`;
   }
-
   return `
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
     <div style="font-size:18px;font-weight:700">${monthName}</div>
@@ -1024,181 +1006,116 @@ function renderCalendar() {
   </div>`;
 }
 
-// TODAY VIEW
+// TODAY
 function renderToday() {
-  const today = State.tasks.filter(t => t.dueDate && fmtRel(t.dueDate) === 'Today' && t.status !== 'completed');
-  const thisWeek = State.tasks.filter(t => {
-    if (!t.dueDate || t.status === 'completed') return false;
-    const diff = (new Date(t.dueDate) - new Date()) / 86400000;
-    return diff > 0 && diff <= 7;
-  });
+  const today = S.filteredTasks().filter(t=>t.dueDate&&fmtRel(t.dueDate)==='Today'&&t.status!=='completed');
+  const week  = S.filteredTasks().filter(t=>{ if(!t.dueDate||t.status==='completed') return false; const d=(new Date(t.dueDate)-new Date())/86400000; return d>0&&d<=7; });
   return `
-  <div class="tabs">
-    <div class="tab active" onclick="filterToday(0,this)">Due Today (${today.length})</div>
-    <div class="tab" onclick="filterToday(1,this)">This Week (${thisWeek.length})</div>
+  <div style="display:flex;gap:2px;background:var(--bg3);border-radius:var(--radius-sm);padding:3px;width:fit-content;margin-bottom:20px">
+    <div id="tab0" class="tab active" style="padding:6px 14px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;background:var(--bg2);color:var(--text)" onclick="switchTodayTab(0)">Due Today (${today.length})</div>
+    <div id="tab1" class="tab" style="padding:6px 14px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text2)" onclick="switchTodayTab(1)">This Week (${week.length})</div>
   </div>
-  <div id="todayContent">
-    ${today.length ? `<div class="card" style="overflow-x:auto">${renderTaskTable(today)}</div>` : emptyState('🎉 Nothing due today!', 'Great job keeping up.')}
+  <div id="todayBody">
+    ${today.length?`<div class="card" style="overflow-x:auto">${fullTable(today)}</div>`:emptyState('🎉 Nothing due today!','')}
   </div>`;
 }
-
-function filterToday(idx, el) {
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  el.classList.add('active');
-  const today = State.tasks.filter(t => t.dueDate && fmtRel(t.dueDate) === 'Today' && t.status !== 'completed');
-  const thisWeek = State.tasks.filter(t => {
-    if (!t.dueDate || t.status === 'completed') return false;
-    const diff = (new Date(t.dueDate) - new Date()) / 86400000;
-    return diff > 0 && diff <= 7;
+function switchTodayTab(i) {
+  const today = S.filteredTasks().filter(t=>t.dueDate&&fmtRel(t.dueDate)==='Today'&&t.status!=='completed');
+  const week  = S.filteredTasks().filter(t=>{ if(!t.dueDate||t.status==='completed') return false; const d=(new Date(t.dueDate)-new Date())/86400000; return d>0&&d<=7; });
+  ['tab0','tab1'].forEach((id,idx)=>{
+    const el=document.getElementById(id);
+    if(el){ el.style.background=idx===i?'var(--bg2)':''; el.style.color=idx===i?'var(--text)':'var(--text2)'; }
   });
-  const tasks = idx === 0 ? today : thisWeek;
-  const el2 = document.getElementById('todayContent');
-  if (el2) el2.innerHTML = tasks.length ? `<div class="card" style="overflow-x:auto">${renderTaskTable(tasks)}</div>` : emptyState('No tasks', '');
+  const body=document.getElementById('todayBody');
+  const tasks=i===0?today:week;
+  if(body) body.innerHTML=tasks.length?`<div class="card" style="overflow-x:auto">${fullTable(tasks)}</div>`:emptyState('No tasks','');
 }
 
-// ASSIGNED BY OTHERS
-function renderAssignedByOthers() {
-  const tasks = State.tasks.filter(t => t.assignedBy !== 'me');
-  const byCollab = {};
-  tasks.forEach(t => {
-    if (!byCollab[t.assignedBy]) byCollab[t.assignedBy] = [];
-    byCollab[t.assignedBy].push(t);
-  });
-
-  return Object.keys(byCollab).length ? Object.entries(byCollab).map(([collabId, ctasks]) => {
-    const c = State.getCollaborator(collabId);
-    return `<div style="margin-bottom:24px">
+// BY OTHERS
+function renderByOthers() {
+  const tasks = S.tasks.filter(t=>t.assignedById!=='admin');
+  const grouped = {};
+  tasks.forEach(t=>{ const k=t.assignedById||'unknown'; if(!grouped[k]) grouped[k]=[]; grouped[k].push(t); });
+  return Object.keys(grouped).length ? Object.entries(grouped).map(([id,ts])=>`
+    <div style="margin-bottom:24px">
       <div class="section-header">
         <div style="display:flex;align-items:center;gap:10px">
-          <div class="assignee-avatar" style="background:linear-gradient(135deg,${c.color||'#6c63ff'},${c.color||'#b87aff'});width:32px;height:32px;font-size:13px">${c.avatar||'??'}</div>
-          <div><div style="font-weight:700">${c.name}</div><div style="font-size:12px;color:var(--text3)">${ctasks.length} task${ctasks.length!==1?'s':''}</div></div>
+          <div class="avatar" style="width:32px;height:32px;font-size:12px">${getInitials(ts[0].assignedByName||'?')}</div>
+          <div><div style="font-weight:700">${esc(ts[0].assignedByName||'Unknown')}</div>
+          <div style="font-size:12px;color:var(--text3)">${ts.length} task${ts.length!==1?'s':''}</div></div>
         </div>
       </div>
-      <div class="card" style="overflow-x:auto">${renderTaskTable(ctasks)}</div>
-    </div>`;
-  }).join('') : emptyState('No tasks from collaborators', 'Share your link to let others assign tasks');
+      <div class="card" style="overflow-x:auto">${fullTable(ts)}</div>
+    </div>`).join('') : emptyState('No tasks assigned by others','Share your link to receive tasks');
 }
 
 // INSIGHTS
 function renderInsights() {
-  const t = State.tasks;
-  const completed = t.filter(x=>x.status==='completed');
-  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate()-7);
-  const completedThisWeek = completed.filter(x=>new Date(x.updatedAt)>=weekAgo);
-  const overdue = t.filter(x=>State.getEffectiveStatus(x)==='overdue');
-  const byPriority = {urgent:0,high:0,medium:0,low:0};
-  t.forEach(x=>byPriority[x.priority]=(byPriority[x.priority]||0)+1);
-  const byCat = {};
-  t.forEach(x=>{ if(x.category){byCat[x.category]=(byCat[x.category]||0)+1;} });
-  const maxCat = Math.max(...Object.values(byCat),1);
-  const maxPri = Math.max(...Object.values(byPriority),1);
-
-  const avgCompletion = completed.length > 0 ? Math.round(completed.reduce((s,x)=>{
-    const d = new Date(x.updatedAt)-new Date(x.createdAt);
-    return s+(d/86400000);
-  },0)/completed.length) : 0;
-
+  const t = S.tasks;
+  const done = t.filter(x=>x.status==='completed');
+  const wk = new Date(); wk.setDate(wk.getDate()-7);
+  const doneWk = done.filter(x=>{ const d=x.updatedAt?.toDate?x.updatedAt.toDate():new Date(x.updatedAt||0); return d>=wk; });
+  const ovd = t.filter(x=>effectiveStatus(x)==='overdue').length;
+  const byP={urgent:0,high:0,medium:0,low:0};
+  t.forEach(x=>byP[x.priority]=(byP[x.priority]||0)+1);
+  const byCat={}; t.forEach(x=>x.category&&(byCat[x.category]=(byCat[x.category]||0)+1));
+  const maxP=Math.max(...Object.values(byP),1), maxC=Math.max(...Object.values(byCat),1);
+  const rate=t.length?Math.round(done.length/t.length*100):0;
   return `
   <div class="insights-grid">
-    <div class="insight-card">
-      <div class="insight-label">Completed This Week</div>
-      <div class="insight-value" style="color:var(--green)">${completedThisWeek.length}</div>
-      <div class="insight-sub">of ${completed.length} total completed</div>
-    </div>
-    <div class="insight-card">
-      <div class="insight-label">Overdue Tasks</div>
-      <div class="insight-value" style="color:var(--red)">${overdue.length}</div>
-      <div class="insight-sub">need immediate attention</div>
-    </div>
-    <div class="insight-card">
-      <div class="insight-label">Avg Completion Time</div>
-      <div class="insight-value" style="color:var(--blue)">${avgCompletion}d</div>
-      <div class="insight-sub">across completed tasks</div>
-    </div>
-    <div class="insight-card">
-      <div class="insight-label">Completion Rate</div>
-      <div class="insight-value" style="color:var(--accent2)">${t.length?Math.round(completed.length/t.length*100):0}%</div>
-      <div class="insight-sub">${completed.length} of ${t.length} tasks</div>
-    </div>
+    <div class="insight-card"><div style="font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px">Completed This Week</div><div style="font-size:26px;font-weight:700;color:var(--green)">${doneWk.length}</div><div style="font-size:12px;color:var(--text3);margin-top:4px">of ${done.length} total done</div></div>
+    <div class="insight-card"><div style="font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px">Overdue Tasks</div><div style="font-size:26px;font-weight:700;color:var(--red)">${ovd}</div><div style="font-size:12px;color:var(--text3);margin-top:4px">need attention</div></div>
+    <div class="insight-card"><div style="font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px">Completion Rate</div><div style="font-size:26px;font-weight:700;color:var(--accent2)">${rate}%</div><div style="font-size:12px;color:var(--text3);margin-top:4px">${done.length} of ${t.length} tasks</div></div>
+    <div class="insight-card"><div style="font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px">Total Tasks</div><div style="font-size:26px;font-weight:700;color:var(--text)">${t.length}</div><div style="font-size:12px;color:var(--text3);margin-top:4px">across all status</div></div>
   </div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px">
-    <div class="card">
-      <div class="section-title" style="margin-bottom:16px">Tasks by Priority</div>
-      <div class="bar-wrap">
-        ${[['urgent','var(--red)'],['high','var(--orange)'],['medium','var(--blue)'],['low','var(--green)']].map(([p,c])=>`
-          <div class="bar-row">
-            <div class="bar-label" style="text-transform:capitalize">${p}</div>
-            <div class="bar-track"><div class="bar-fill" style="width:${Math.round((byPriority[p]||0)/maxPri*100)}%;background:${c}"></div></div>
-            <div class="bar-val">${byPriority[p]||0}</div>
-          </div>`).join('')}
-      </div>
-    </div>
-    <div class="card">
-      <div class="section-title" style="margin-bottom:16px">Tasks by Category</div>
-      <div class="bar-wrap">
-        ${Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([cat,cnt],i)=>`
-          <div class="bar-row">
-            <div class="bar-label">${cat}</div>
-            <div class="bar-track"><div class="bar-fill" style="width:${Math.round(cnt/maxCat*100)}%;background:var(--accent${i%2?'2':''})"></div></div>
-            <div class="bar-val">${cnt}</div>
-          </div>`).join('')}
-      </div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="section-title" style="margin-bottom:16px">Activity Log</div>
-    ${renderActivityLog(State.tasks.flatMap(t=>t.activityLog||[]).sort((a,b)=>new Date(b.time)-new Date(a.time)).slice(0,10))}
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="card"><div class="section-title" style="margin-bottom:14px">By Priority</div><div class="bar-wrap">
+      ${[['urgent','var(--red)'],['high','var(--orange)'],['medium','var(--blue)'],['low','var(--green)']].map(([p,c])=>`
+        <div class="bar-row"><div class="bar-label">${p.charAt(0).toUpperCase()+p.slice(1)}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round((byP[p]||0)/maxP*100)}%;background:${c}"></div></div><div class="bar-val">${byP[p]||0}</div></div>`).join('')}
+    </div></div>
+    <div class="card"><div class="section-title" style="margin-bottom:14px">By Category</div><div class="bar-wrap">
+      ${Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([cat,cnt])=>`
+        <div class="bar-row"><div class="bar-label">${esc(cat)}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(cnt/maxC*100)}%;background:var(--accent)"></div></div><div class="bar-val">${cnt}</div></div>`).join('')}
+    </div></div>
   </div>`;
 }
 
-function renderActivityLog(items) {
-  if (!items.length) return emptyState('No activity yet', '');
-  return `<div>${items.map(a => {
-    const by = a.by === 'me' ? State.user : State.collaborators.find(c=>c.id===a.by);
-    return `<div class="activity-item">
-      <div class="activity-icon">${by?.avatar||'??'}</div>
-      <div class="activity-content">
-        <div class="activity-text"><strong>${by?.name||'Unknown'}</strong> — ${escHtml(a.text)}</div>
-        <div class="activity-time">${fmtDate(a.time)}</div>
-      </div>
-    </div>`;
-  }).join('')}</div>`;
+function emptyState(title,text) {
+  return `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">${title}</div><div class="empty-text">${text}</div></div>`;
 }
 
 // ============================================================
 // TASK MODAL
 // ============================================================
 function renderTaskModal() {
-  const t = State.taskModal;
+  const t = S.taskModal;
   if (!t) return '<div class="overlay" id="taskOverlay"></div>';
   const isNew = t._new;
-  const collabs = State.collaborators;
-  const categories = ['Design','Development','Marketing','Finance','Operations','Personal','Other'];
+  const isAdmin = S.isAdmin;
+  const cats = ['Design','Development','Marketing','Finance','Operations','Personal','Other'];
 
   return `
-  <div class="overlay open" id="taskOverlay" onclick="closeTaskModal(event)">
+  <div class="overlay open" id="taskOverlay" onclick="if(event.target.id==='taskOverlay')closeModal()">
     <div class="modal" onclick="event.stopPropagation()">
       <div class="modal-header">
-        <div class="modal-title-wrap">
-          <input class="modal-title-input" id="mt-title" placeholder="Task title..." value="${escHtml(t.title||'')}" ${State.isExternal&&!isNew?'readonly':''}>
-        </div>
-        <button class="modal-close" onclick="closeTaskModal(null)">✕</button>
+        <input class="modal-title-input" id="mt-title" placeholder="Task title…" value="${esc(t.title||'')}" ${!isAdmin&&!isNew?'readonly':''}>
+        <button class="modal-close" onclick="closeModal()">✕</button>
       </div>
       <div class="modal-body">
         <div class="form-group">
           <label class="form-label">Description</label>
-          <textarea class="form-input form-textarea" id="mt-desc" placeholder="Describe the task in detail..." ${State.isExternal&&!isNew?'readonly':''}>${escHtml(t.desc||'')}</textarea>
+          <textarea class="form-input form-textarea" id="mt-desc" placeholder="Describe the task…" ${!isAdmin&&!isNew?'readonly':''}>${esc(t.desc||'')}</textarea>
         </div>
         <div class="modal-grid">
           <div class="form-group">
             <label class="form-label">Priority</label>
-            <select class="form-input form-select" id="mt-priority" ${State.isExternal&&!isNew?'disabled':''}>
+            <select class="form-input form-select" id="mt-priority" ${!isAdmin&&!isNew?'disabled':''}>
               ${['low','medium','high','urgent'].map(p=>`<option value="${p}" ${t.priority===p?'selected':''}>${p.charAt(0).toUpperCase()+p.slice(1)}</option>`).join('')}
             </select>
           </div>
           <div class="form-group">
-            <label class="form-label">Status</label>
-            <select class="form-input form-select" id="mt-status" ${State.isExternal?'disabled':''}>
+            <label class="form-label">Status ${!isAdmin?'<span style="font-size:10px;color:var(--text3)">(admin only)</span>':''}</label>
+            <select class="form-input form-select" id="mt-status" ${!isAdmin?'disabled':''}>
               ${['not-started','in-progress','blocked','completed','on-hold'].map(s=>`<option value="${s}" ${t.status===s?'selected':''}>${statusLabel(s)}</option>`).join('')}
             </select>
           </div>
@@ -1206,65 +1123,55 @@ function renderTaskModal() {
         <div class="modal-grid">
           <div class="form-group">
             <label class="form-label">Due Date</label>
-            <input class="form-input" id="mt-due" type="date" value="${t.dueDate||''}" ${State.isExternal&&!isNew?'readonly':''}>
+            <input class="form-input" type="date" id="mt-due" value="${t.dueDate||''}" ${!isAdmin&&!isNew?'readonly':''}>
           </div>
           <div class="form-group">
             <label class="form-label">Category</label>
-            <select class="form-input form-select" id="mt-category" ${State.isExternal&&!isNew?'disabled':''}>
-              ${categories.map(c=>`<option value="${c}" ${t.category===c?'selected':''}>${c}</option>`).join('')}
+            <select class="form-input form-select" id="mt-category" ${!isAdmin&&!isNew?'disabled':''}>
+              ${cats.map(c=>`<option value="${c}" ${t.category===c?'selected':''}>${c}</option>`).join('')}
             </select>
           </div>
         </div>
+        ${isAdmin?`
         <div class="modal-grid">
           <div class="form-group">
-            <label class="form-label">Assigned By</label>
-            <select class="form-input form-select" id="mt-assignedBy" ${!isNew||State.isExternal?'disabled':''}>
-              <option value="me" ${t.assignedBy==='me'?'selected':''}>Self-assigned (Me)</option>
-              ${collabs.map(c=>`<option value="${c.id}" ${t.assignedBy===c.id?'selected':''}>${c.name}</option>`).join('')}
-            </select>
+            <label class="form-label">Progress %</label>
+            <input class="form-input" type="number" id="mt-progress" min="0" max="100" value="${t.progress||0}">
           </div>
           <div class="form-group">
-            <label class="form-label">Progress %</label>
-            <input class="form-input" id="mt-progress" type="number" min="0" max="100" value="${t.progress||0}" ${State.isExternal?'readonly':''}>
+            <label class="form-label">Link / Reference URL</label>
+            <input class="form-input" type="text" id="mt-link" placeholder="https://…" value="${esc(t.links||'')}">
           </div>
         </div>
-        ${!State.isExternal ? `<div class="form-group">
-          <label class="form-label">Link / Attachment URL</label>
-          <input class="form-input" id="mt-link" type="text" placeholder="https://..." value="${escHtml(t.links||'')}">
-        </div>` : ''}
         <div class="form-group">
-          <label class="form-label" style="display:flex;align-items:center;gap:8px">
-            Remarks / Notes
-            <span style="font-size:10px;background:var(--bg3);color:var(--text3);padding:2px 6px;border-radius:4px;font-weight:400">Admin only</span>
-          </label>
-          <textarea class="form-input form-textarea" id="mt-remarks" placeholder="Add remarks or notes..." ${State.isExternal?'readonly':''}>${escHtml(t.remarks||'')}</textarea>
+          <label class="form-label">Remarks / Notes <span style="font-size:10px;color:var(--text3)">(admin only)</span></label>
+          <textarea class="form-input form-textarea" id="mt-remarks" placeholder="Internal notes…">${esc(t.remarks||'')}</textarea>
         </div>
-        ${!isNew ? `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        ${!isNew?`
+        <div style="display:flex;gap:14px;flex-wrap:wrap">
           <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
-            <input type="checkbox" id="mt-pinned" ${t.pinned?'checked':''} ${State.isExternal?'disabled':''}>
-            <span>📌 Pin this task</span>
+            <input type="checkbox" id="mt-pinned" ${t.pinned?'checked':''}> 📌 Pin task
           </label>
-          <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
-            <input type="checkbox" id="mt-recurring" ${t.recurring?'checked':''} ${State.isExternal?'disabled':''}>
-            <span>↺ Recurring task</span>
-          </label>
-        </div>` : ''}
-        ${!isNew ? `<div style="font-size:12px;color:var(--text3);display:flex;gap:16px">
+        </div>
+        <div style="font-size:12px;color:var(--text3);display:flex;gap:16px;flex-wrap:wrap">
+          <span>Assigned by: <strong style="color:var(--text2)">${esc(t.assignedByName||'Self')}</strong></span>
           <span>Created: ${fmtDate(t.createdAt)}</span>
-          <span>Updated: ${fmtDate(t.updatedAt)}</span>
-          ${t.links ? `<a href="${escHtml(t.links)}" target="_blank" style="color:var(--accent2)">🔗 Open Link</a>` : ''}
-        </div>` : ''}
+          ${t.links?`<a href="${esc(t.links)}" target="_blank" style="color:var(--accent2)">🔗 Open Link</a>`:''}
+        </div>`:''}
+        `:`
+        ${!isNew?`<div style="font-size:12px;color:var(--text3)">Status: <strong style="color:var(--text2)">${statusLabel(t.status)}</strong> — updated by admin</div>`:''}
+        `}
       </div>
-      ${!isNew ? renderComments(t) : ''}
+      ${!isNew?renderComments(t):''}
       <div class="modal-footer">
-        <div class="modal-footer-left">
-          ${!isNew && !State.isExternal ? `
-            <button class="btn-secondary" onclick="archiveTask('${t.id}')">${t.status==='completed'?'↺ Reopen':'Archive'}</button>
-            <button style="color:var(--red);padding:7px 10px;border-radius:6px;font-size:13px" onclick="deleteTask('${t.id}')">Delete</button>
-          ` : ''}
+        <div style="display:flex;gap:8px">
+          ${isAdmin&&!isNew?`
+            <button class="btn-secondary" onclick="archiveTask('${t.id}')">${t.status==='completed'?'↺ Reopen':'✓ Complete'}</button>
+            <button style="color:var(--red);padding:7px 10px;font-size:13px;border-radius:6px" onclick="deleteTask('${t.id}')">Delete</button>
+          `:''}
         </div>
         <div style="display:flex;gap:8px">
-          <button class="btn-ghost" onclick="closeTaskModal(null)">Cancel</button>
+          <button class="btn-ghost" onclick="closeModal()">Cancel</button>
           <button class="btn-primary" onclick="saveTask()">${isNew?'Create Task':'Save Changes'}</button>
         </div>
       </div>
@@ -1273,74 +1180,60 @@ function renderTaskModal() {
 }
 
 function renderComments(t) {
-  const comments = t.comments || [];
+  const comments = t.comments||[];
   return `
   <div class="comments-section">
-    <div class="comments-title">💬 Comments & Updates <span style="color:var(--text3);font-weight:400">(${comments.length})</span></div>
-    ${comments.map(c => {
-      const by = c.by === 'me' ? State.user : State.collaborators.find(x=>x.id===c.by);
-      const isMe = c.by === 'me';
+    <div style="font-size:13px;font-weight:700;margin-bottom:14px">💬 Comments <span style="color:var(--text3);font-weight:400">(${comments.length})</span></div>
+    ${comments.map(c=>{
+      const isMe = c.byId === 'admin';
+      const name = isMe ? (S.user?.email||'Admin') : (c.byName||'Collaborator');
       return `<div class="comment-item">
-        <div class="comment-avatar ${isMe?'me':''}" style="background:linear-gradient(135deg,${by?.color||'var(--accent)'},${isMe?'var(--purple)':by?.color||'var(--blue)'})">${by?.avatar||'??'}</div>
+        <div class="comment-avatar" style="background:${isMe?'linear-gradient(135deg,var(--accent),var(--purple))':'linear-gradient(135deg,var(--blue),var(--green))'}">
+          ${getInitials(name)}
+        </div>
         <div class="comment-bubble">
           <div class="comment-meta">
-            <span class="comment-author">${by?.name||'Unknown'}</span>
+            <span class="comment-author">${esc(name)}</span>
             <span class="comment-time">${fmtDate(c.time)}</span>
           </div>
-          <div class="comment-text">${escHtml(c.text)}</div>
+          <div class="comment-text">${esc(c.text)}</div>
         </div>
       </div>`;
     }).join('')}
     <div class="comment-input-wrap">
-      <input class="comment-input" id="commentInput" placeholder="Add a comment or update..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){addComment('${t.id}');event.preventDefault()}">
+      <input class="comment-input" id="commentInp" placeholder="Add a comment…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){addComment('${t.id}');event.preventDefault()}">
       <button class="btn-primary" onclick="addComment('${t.id}')">Send</button>
     </div>
   </div>`;
 }
 
 // SHARE MODAL
-function renderShareModal() {
-  if (!State.shareModal) return '<div id="shareOverlay"></div>';
-  const baseUrl = window.location.href.split('?')[0];
-  const collabs = State.collaborators;
-
+function renderShareModalHtml() {
+  if (!S.shareModal) return '<div id="shareOverlay"></div>';
+  const base = window.location.href.split('?')[0];
+  const link = `${base}?share=${S.fb.SHARE_TOKEN}`;
   return `
-  <div class="overlay open" id="shareOverlay" onclick="closeShareModal(event)">
-    <div class="modal" onclick="event.stopPropagation()" style="max-width:520px">
+  <div class="overlay open" id="shareOverlay" onclick="if(event.target.id==='shareOverlay')S.shareModal=false;render()">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width:500px">
       <div class="modal-header">
-        <div class="modal-title-wrap"><div style="font-size:18px;font-weight:700">🔗 Share Your Task Board</div></div>
-        <button class="modal-close" onclick="closeShareModal(null)">✕</button>
+        <div style="font-size:18px;font-weight:700">🔗 Share Your Task Board</div>
+        <button class="modal-close" onclick="S.shareModal=false;render()">✕</button>
       </div>
       <div class="modal-body">
-        <p style="color:var(--text2);font-size:13px;line-height:1.6;margin-bottom:4px">Share your TaskFlow board so others can assign tasks to you. They can only see and manage tasks they create.</p>
-        <div class="form-group">
-          <label class="form-label">Your Share Token</label>
+        <p style="color:var(--text2);font-size:13px;line-height:1.6">Anyone with this link can assign tasks to you. They only see tasks they personally created.</p>
+        <div class="form-group" style="margin-top:4px">
+          <label class="form-label">Shareable Link</label>
           <div class="share-link-box">
-            <div class="share-link-text">${State.shareToken}</div>
-            <button class="copy-btn" onclick="copyToken()">Copy Token</button>
+            <div class="share-link-text">${esc(link)}</div>
+            <div class="copy-btn" onclick="copyText('${esc(link)}','Link copied!')">Copy</div>
           </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Collaborator Links</label>
-          ${collabs.map(c=>`
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px">
-              <div class="assignee-avatar" style="background:linear-gradient(135deg,${c.color},var(--accent2));width:28px;height:28px">${c.avatar}</div>
-              <div style="flex:1;min-width:0">
-                <div style="font-size:13px;font-weight:600">${c.name}</div>
-                <div style="font-size:11px;color:var(--accent2);font-family:'DM Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-                  ?share=${State.shareToken}&collab=${c.id}
-                </div>
-              </div>
-              <button class="copy-btn" onclick="copyCollabLink('${c.id}','${baseUrl}')">Copy</button>
-            </div>`).join('')}
-        </div>
-        <div class="form-group">
-          <label class="form-label">Add New Collaborator</label>
-          <div style="display:flex;gap:8px">
-            <input class="form-input" id="newCollabName" placeholder="Name" style="flex:1">
-            <input class="form-input" id="newCollabEmail" placeholder="Email (optional)" style="flex:1">
-            <button class="btn-primary" onclick="addCollaborator()">Add</button>
-          </div>
+        <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;font-size:13px;color:var(--text2);line-height:1.7">
+          <strong style="color:var(--text)">How it works:</strong><br>
+          1. Send this link to anyone via WhatsApp, email, etc.<br>
+          2. They open it → enter their name → create tasks for you<br>
+          3. They can only see tasks <em>they</em> created<br>
+          4. You see all tasks in your admin view
         </div>
       </div>
     </div>
@@ -1349,299 +1242,184 @@ function renderShareModal() {
 
 // NOTIF PANEL
 function renderNotifPanel() {
+  const newTasks = S.tasks.filter(t=>t._newForAdmin).slice(0,10);
   return `
-  <div class="notif-panel ${State.notifOpen?'open':''}" id="notifPanel">
-    <div class="notif-header">
-      <div style="font-weight:700;font-size:14px">Notifications</div>
-      <button class="btn-ghost" onclick="markAllRead()" style="font-size:12px">Mark all read</button>
+  <div class="notif-panel ${S.notifOpen?'open':''}" id="notifPanel">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div style="font-weight:700;font-size:14px">New Task Notifications</div>
+      <button class="btn-ghost" style="font-size:12px" onclick="markAllSeen()">Mark all seen</button>
     </div>
-    ${State.notifications.length ? State.notifications.map(n=>`
-      <div class="notif-item ${n.read?'':'unread'}" onclick="readNotif('${n.id}')">
-        <div class="notif-item-title">${n.title}</div>
-        <div class="notif-item-text">${n.text}</div>
-        <div class="notif-item-time">${fmtDate(n.time)}</div>
-      </div>`).join('') : `<div style="padding:40px;text-align:center;color:var(--text3);font-size:13px">No notifications</div>`}
+    ${newTasks.length ? newTasks.map(t=>`
+      <div class="notif-item unread" onclick="openTask('${t.id}');S.notifOpen=false;render()">
+        <div style="font-size:13px;font-weight:600;margin-bottom:3px">${esc(t.title)}</div>
+        <div style="font-size:12px;color:var(--text2)">Assigned by ${esc(t.assignedByName||'Someone')}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:3px">${fmtDate(t.createdAt)}</div>
+      </div>`).join('') :
+      `<div style="padding:40px;text-align:center;color:var(--text3);font-size:13px">No new notifications</div>`}
   </div>`;
 }
-
-// ============================================================
-// BADGE HELPERS
-// ============================================================
-function priorityBadge(p) {
-  const cls = {low:'p-low',medium:'p-medium',high:'p-high',urgent:'p-urgent'}[p]||'p-low';
-  const icons = {low:'↓',medium:'→',high:'↑',urgent:'‼'};
-  return `<span class="badge ${cls}"><span>${icons[p]||''}</span>${(p||'low').charAt(0).toUpperCase()+(p||'low').slice(1)}</span>`;
-}
-function statusBadge(s) {
-  const cls = {'not-started':'s-not-started','in-progress':'s-in-progress','blocked':'s-blocked','completed':'s-completed','on-hold':'s-on-hold','overdue':'s-overdue'}[s]||'s-not-started';
-  return `<span class="badge ${cls}">${statusLabel(s)}</span>`;
-}
-function statusLabel(s) {
-  return {'not-started':'Not Started','in-progress':'In Progress','blocked':'Blocked','completed':'Completed','on-hold':'On Hold','overdue':'Overdue'}[s]||s;
-}
-function priorityBgClass(p) {
-  return {'urgent':'s-overdue','high':'s-blocked','medium':'s-in-progress','low':'s-completed'}[p]||'';
-}
-function assigneeChip(id) {
-  const c = State.getCollaborator(id);
-  const isMe = id === 'me';
-  return `<div class="assignee-chip">
-    <div class="assignee-avatar ${isMe?'me':''}" style="background:linear-gradient(135deg,${c.color||'var(--accent)'},${isMe?'var(--purple)':c.color||'var(--blue)'})">${c.avatar||'??'}</div>
-    ${c.name||'Unknown'}
-  </div>`;
-}
-function emptyState(title, text) {
-  return `<div class="empty-state"><div class="empty-icon">📭</div><div class="empty-title">${title}</div><div class="empty-text">${text}</div></div>`;
-}
-function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 // ============================================================
 // ACTIONS
 // ============================================================
-function navigate(view) { State.view = view; State.sidebarOpen = false; render(); }
-function setFilter(key, val) { State.filters[key] = State.filters[key] === val ? '' : val; if (State.view === 'dashboard') State.view = 'list'; render(); }
-function clearFilters() { State.filters = {status:'',priority:'',category:'',assignedBy:''}; render(); }
-function doSearch(q) { State.searchQ = q; render(); }
-function toggleSidebar() { State.sidebarOpen = !State.sidebarOpen; render(); }
-function closeSidebar() { State.sidebarOpen = false; render(); }
-function toggleNotif() { State.notifOpen = !State.notifOpen; render(); }
-function calNav(dir) {
-  if (dir === 0) { State.calMonth = new Date().getMonth(); State.calYear = new Date().getFullYear(); }
-  else {
-    State.calMonth += dir;
-    if (State.calMonth < 0) { State.calMonth = 11; State.calYear--; }
-    if (State.calMonth > 11) { State.calMonth = 0; State.calYear++; }
-  }
+function navigate(v)  { S.view=v; S.sidebarOpen=false; render(); }
+function toggleSidebar() { S.sidebarOpen=!S.sidebarOpen; render(); }
+function closeSidebar()  { S.sidebarOpen=false; render(); }
+function toggleNotif()   { S.notifOpen=!S.notifOpen; render(); }
+function setFilter(k,v)  { S.filters[k]=S.filters[k]===v&&v?'':v; if(S.view==='dashboard')S.view='list'; render(); }
+function clearFilters()  { S.filters={status:'',priority:'',category:''}; render(); }
+function quickFilter(s)  { S.filters.status=s; S.view='list'; render(); }
+function calNav(d) {
+  if(d===0){S.calMonth=new Date().getMonth();S.calYear=new Date().getFullYear();}
+  else{S.calMonth+=d;if(S.calMonth<0){S.calMonth=11;S.calYear--;}if(S.calMonth>11){S.calMonth=0;S.calYear++;}}
   render();
 }
+function openShareModal() { S.shareModal=true; render(); }
 
-function openNewTask(status) {
-  const defAssignedBy = State.isExternal ? State.externalCollaborator.id : 'me';
-  State.taskModal = { _new:true, title:'', desc:'', assignedBy:defAssignedBy, priority:'medium', status:status||'not-started', dueDate:'', category:'Personal', progress:0, remarks:'', links:'', pinned:false, recurring:false };
+function openNewTask() {
+  S.taskModal = { _new:true, title:'', desc:'', priority:'medium', status:'not-started', dueDate:'', category:'Personal', progress:0 };
   render();
 }
-function openNewTaskWithStatus(status) { openNewTask(status); }
+function openNewTaskStatus(st) { openNewTask(); if(S.taskModal) S.taskModal.status=st; render(); }
+function openTask(id) { const t=S.tasks.find(x=>x.id===id); if(t){S.taskModal={...t,comments:t.comments||[]};render();} }
+function closeModal() { S.taskModal=null; render(); }
 
-function openTask(id) {
-  const t = State.tasks.find(x=>x.id===id);
-  if (t) { State.taskModal = {...t}; render(); }
-}
-
-function closeTaskModal(e) { if (!e || e.target.id === 'taskOverlay') { State.taskModal = null; render(); } }
-
-function saveTask() {
-  const t = State.taskModal;
+async function saveTask() {
+  const t = S.taskModal;
   if (!t) return;
-  const title = document.getElementById('mt-title')?.value?.trim();
-  if (!title) { toast('Please enter a task title', 'error'); return; }
+  const title = (document.getElementById('mt-title')?.value||'').trim();
+  if (!title) { toast('Enter a task title','error'); return; }
 
-  const data = {
+  const {db, collection, doc, addDoc, updateDoc, serverTimestamp} = S.fb;
+
+  const base = {
     title,
-    desc: document.getElementById('mt-desc')?.value || '',
-    priority: document.getElementById('mt-priority')?.value || t.priority,
-    status: document.getElementById('mt-status')?.value || t.status,
-    dueDate: document.getElementById('mt-due')?.value || '',
-    category: document.getElementById('mt-category')?.value || t.category,
-    assignedBy: document.getElementById('mt-assignedBy')?.value || t.assignedBy,
-    progress: parseInt(document.getElementById('mt-progress')?.value || '0'),
-    links: document.getElementById('mt-link')?.value || '',
-    remarks: document.getElementById('mt-remarks')?.value || '',
-    pinned: document.getElementById('mt-pinned')?.checked || false,
-    recurring: document.getElementById('mt-recurring')?.checked || false,
-    updatedAt: now(),
+    desc:     document.getElementById('mt-desc')?.value||'',
+    priority: document.getElementById('mt-priority')?.value||t.priority||'medium',
+    status:   document.getElementById('mt-status')?.value||t.status||'not-started',
+    dueDate:  document.getElementById('mt-due')?.value||'',
+    category: document.getElementById('mt-category')?.value||t.category||'Personal',
+    updatedAt: serverTimestamp(),
   };
 
+  if (S.isAdmin) {
+    Object.assign(base, {
+      progress: parseInt(document.getElementById('mt-progress')?.value||'0'),
+      links:    document.getElementById('mt-link')?.value||'',
+      remarks:  document.getElementById('mt-remarks')?.value||'',
+      pinned:   document.getElementById('mt-pinned')?.checked||false,
+    });
+  }
+
   if (t._new) {
-    const newTask = { id:uid(), ...data, createdAt:now(), comments:[], activityLog:[{id:uid(),by:State.isExternal?State.externalCollaborator.id:'me',text:'Task created',time:now()}] };
-    State.tasks.unshift(newTask);
-    // Add notification
-    if (State.isExternal) {
-      State.notifications.unshift({ id:uid(), title:'New task assigned', text:`${State.externalCollaborator.name} assigned you "${title}"`, time:now(), read:false });
-    }
-    toast('Task created! ✓', 'success');
+    // Who is creating?
+    const byId   = S.isAdmin ? 'admin' : S.collabId;
+    const byName = S.isAdmin ? (S.user?.email||'Admin') : S.collabName;
+    Object.assign(base, {
+      assignedById:   byId,
+      assignedByName: byName,
+      createdAt:      serverTimestamp(),
+      comments:       [],
+      _newForAdmin:   !S.isAdmin, // flag for admin notification
+    });
+    try {
+      await addDoc(collection(db,'tasks'), base);
+      toast('Task created ✓','success');
+    } catch(e) { toast('Error: '+e.message,'error'); return; }
   } else {
-    const idx = State.tasks.findIndex(x=>x.id===t.id);
-    if (idx > -1) {
-      const old = State.tasks[idx];
-      const log = [...(old.activityLog||[])];
-      if (old.status !== data.status) log.push({id:uid(),by:'me',text:`Status changed from "${statusLabel(old.status)}" to "${statusLabel(data.status)}"`,time:now()});
-      if (old.priority !== data.priority) log.push({id:uid(),by:'me',text:`Priority changed to ${data.priority}`,time:now()});
-      State.tasks[idx] = { ...old, ...data, activityLog:log };
-    }
-    toast('Task updated! ✓', 'success');
+    try {
+      await updateDoc(doc(db,'tasks',t.id), base);
+      toast('Task updated ✓','success');
+    } catch(e) { toast('Error: '+e.message,'error'); return; }
   }
-  State.save();
-  State.taskModal = null;
-  render();
+  S.taskModal = null;
+  // render() triggered by onSnapshot
 }
 
-function addComment(taskId) {
-  const inp = document.getElementById('commentInput');
-  const text = inp?.value?.trim();
+async function addComment(taskId) {
+  const inp = document.getElementById('commentInp');
+  const text = (inp?.value||'').trim();
   if (!text) return;
-  const idx = State.tasks.findIndex(x=>x.id===taskId);
-  if (idx > -1) {
-    const byId = State.isExternal ? State.externalCollaborator.id : 'me';
-    State.tasks[idx].comments = [...(State.tasks[idx].comments||[]), {id:uid(),by:byId,text,time:now()}];
-    State.tasks[idx].activityLog = [...(State.tasks[idx].activityLog||[]), {id:uid(),by:byId,text:`Added a comment`,time:now()}];
-    State.tasks[idx].updatedAt = now();
-    State.save();
-    State.taskModal = {...State.tasks[idx]};
+  const {db, doc, updateDoc, serverTimestamp} = S.fb;
+  const t = S.tasks.find(x=>x.id===taskId);
+  if (!t) return;
+  const byId   = S.isAdmin ? 'admin' : S.collabId;
+  const byName = S.isAdmin ? (S.user?.email||'Admin') : S.collabName;
+  const newComment = { id:'c'+Date.now(), byId, byName, text, time: new Date().toISOString() };
+  const updComments = [...(t.comments||[]), newComment];
+  try {
+    await updateDoc(doc(db,'tasks',taskId), { comments: updComments, updatedAt: serverTimestamp() });
+    S.taskModal = { ...S.tasks.find(x=>x.id===taskId)||S.taskModal, comments: updComments };
     render();
-    setTimeout(()=>{ const inp2=document.getElementById('commentInput'); if(inp2)inp2.focus(); }, 100);
-  }
+    setTimeout(()=>{ const i=document.getElementById('commentInp'); if(i)i.focus(); }, 50);
+  } catch(e) { toast('Error: '+e.message,'error'); }
 }
 
-function quickStatus(id) {
-  const t = State.tasks.find(x=>x.id===id);
-  if (!t) return;
-  const order = ['not-started','in-progress','blocked','on-hold','completed'];
-  const idx = order.indexOf(t.status);
-  t.status = order[(idx+1)%order.length];
-  t.updatedAt = now();
-  t.activityLog = [...(t.activityLog||[]),{id:uid(),by:'me',text:`Status changed to "${statusLabel(t.status)}"`,time:now()}];
-  State.save();
+async function quickCycleStatus(id) {
+  const t=S.tasks.find(x=>x.id===id); if(!t) return;
+  const order=['not-started','in-progress','blocked','on-hold','completed'];
+  const next=order[(order.indexOf(t.status)+1)%order.length];
+  const {db,doc,updateDoc,serverTimestamp}=S.fb;
+  try { await updateDoc(doc(db,'tasks',id),{status:next,updatedAt:serverTimestamp()}); toast(`→ ${statusLabel(next)}`,'info'); }
+  catch(e){toast(e.message,'error');}
+}
+
+async function togglePin(id) {
+  const t=S.tasks.find(x=>x.id===id); if(!t) return;
+  const {db,doc,updateDoc,serverTimestamp}=S.fb;
+  try { await updateDoc(doc(db,'tasks',id),{pinned:!t.pinned,updatedAt:serverTimestamp()}); toast(t.pinned?'Unpinned':'Pinned ★','info'); }
+  catch(e){toast(e.message,'error');}
+}
+
+async function archiveTask(id) {
+  const t=S.tasks.find(x=>x.id===id); if(!t) return;
+  const next=t.status==='completed'?'not-started':'completed';
+  const {db,doc,updateDoc,serverTimestamp}=S.fb;
+  try {
+    await updateDoc(doc(db,'tasks',id),{status:next,progress:next==='completed'?100:(t.progress||0),updatedAt:serverTimestamp()});
+    S.taskModal=null;
+    toast(next==='completed'?'Marked complete ✓':'Task reopened','success');
+  } catch(e){toast(e.message,'error');}
+}
+
+async function deleteTask(id) {
+  if(!confirm('Delete this task permanently?')) return;
+  const {db,doc,deleteDoc}=S.fb;
+  try { await deleteDoc(doc(db,'tasks',id)); S.taskModal=null; toast('Task deleted','info'); }
+  catch(e){toast(e.message,'error');}
+}
+
+async function markAllSeen() {
+  const {db,doc,updateDoc}=S.fb;
+  const unseenIds=S.tasks.filter(t=>t._newForAdmin).map(t=>t.id);
+  await Promise.all(unseenIds.map(id=>updateDoc(doc(db,'tasks',id),{_newForAdmin:false})));
+  S.notifOpen=false;
   render();
-  toast(`Status → ${statusLabel(t.status)}`, 'info');
 }
 
-function togglePin(id) {
-  const t = State.tasks.find(x=>x.id===id);
-  if (!t) return;
-  t.pinned = !t.pinned;
-  State.save();
-  render();
-  toast(t.pinned ? 'Task pinned ★' : 'Task unpinned', 'info');
-}
-
-function archiveTask(id) {
-  const t = State.tasks.find(x=>x.id===id);
-  if (!t) return;
-  t.status = t.status === 'completed' ? 'not-started' : 'completed';
-  t.progress = t.status === 'completed' ? 100 : t.progress;
-  t.updatedAt = now();
-  State.save();
-  State.taskModal = null;
-  render();
-  toast(t.status === 'completed' ? 'Task completed ✓' : 'Task reopened', 'success');
-}
-
-function deleteTask(id) {
-  if (!confirm('Delete this task?')) return;
-  State.tasks = State.tasks.filter(x=>x.id!==id);
-  State.save();
-  State.taskModal = null;
-  render();
-  toast('Task deleted', 'info');
-}
-
-function openShareModal() { State.shareModal = true; render(); }
-function closeShareModal(e) { if (!e || e.target.id === 'shareOverlay') { State.shareModal = false; render(); } }
-
-function copyToken() {
-  navigator.clipboard.writeText(State.shareToken).then(()=>toast('Token copied!','success')).catch(()=>{
-    const el = document.createElement('textarea'); el.value = State.shareToken; document.body.appendChild(el); el.select(); document.execCommand('copy'); el.remove(); toast('Token copied!','success');
+function copyText(text, msg) {
+  navigator.clipboard.writeText(text).then(()=>toast(msg,'success')).catch(()=>{
+    const el=document.createElement('textarea');el.value=text;document.body.appendChild(el);el.select();document.execCommand('copy');el.remove();toast(msg,'success');
   });
-}
-
-function copyCollabLink(collabId, base) {
-  const link = `${base}?share=${State.shareToken}&collab=${collabId}`;
-  navigator.clipboard.writeText(link).then(()=>toast('Link copied!','success')).catch(()=>{
-    const el = document.createElement('textarea'); el.value = link; document.body.appendChild(el); el.select(); document.execCommand('copy'); el.remove(); toast('Link copied!','success');
-  });
-}
-
-function addCollaborator() {
-  const name = document.getElementById('newCollabName')?.value?.trim();
-  const email = document.getElementById('newCollabEmail')?.value?.trim();
-  if (!name) { toast('Enter a name', 'error'); return; }
-  const colors = ['#42b4ff','#22d3a0','#b87aff','#ff8c42','#ff4f6e','#f5c542'];
-  const newC = { id:'c'+uid().slice(0,8), name, email, role:'collaborator', avatar:name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(), color:colors[State.collaborators.length%colors.length] };
-  State.collaborators.push(newC);
-  State.saveCollabs();
-  render();
-  toast(`${name} added as collaborator`, 'success');
-}
-
-function readNotif(id) {
-  const n = State.notifications.find(x=>x.id===id);
-  if (n) { n.read = true; State.save(); render(); }
-}
-
-function markAllRead() {
-  State.notifications.forEach(n=>n.read=true);
-  State.save();
-  render();
-}
-
-function logout() {
-  if (confirm('Sign out?')) { State.user = null; render(); }
 }
 
 function exportCSV() {
-  const tasks = State.tasks;
-  const headers = ['Title','Description','Status','Priority','Category','Assigned By','Due Date','Progress %','Created','Updated'];
-  const rows = tasks.map(t => [
+  const rows=[['Title','Description','Status','Priority','Category','Assigned By','Due Date','Progress%','Created']];
+  S.tasks.forEach(t=>rows.push([
     `"${(t.title||'').replace(/"/g,'""')}"`,
     `"${(t.desc||'').replace(/"/g,'""')}"`,
-    statusLabel(t.status),
-    t.priority,
-    t.category||'',
-    State.getCollaboratorName(t.assignedBy),
-    t.dueDate||'',
-    t.progress||0,
-    fmtDate(t.createdAt),
-    fmtDate(t.updatedAt)
-  ].join(','));
-  const csv = [headers.join(','), ...rows].join('\n');
-  const blob = new Blob([csv], {type:'text/csv'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download='taskflow-export.csv'; a.click();
-  toast('Exported to CSV ✓', 'success');
+    statusLabel(t.status),t.priority,t.category||'',
+    t.assignedByName||'Self',t.dueDate||'',t.progress||0,
+    fmtDate(t.createdAt)
+  ].join(',')));
+  const blob=new Blob([rows.join('\n')],{type:'text/csv'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='taskflow.csv';a.click();
+  toast('Exported ✓','success');
 }
 
-// ============================================================
-// TOAST
-// ============================================================
-function toast(msg, type='info') {
-  const wrap = document.getElementById('toastWrap');
-  if (!wrap) return;
-  const t = document.createElement('div');
-  t.className = `toast ${type}`;
-  const icons = {success:'✓',error:'✕',info:'ℹ'};
-  t.innerHTML = `<span>${icons[type]||'ℹ'}</span><span>${msg}</span>`;
-  wrap.appendChild(t);
-  setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateX(20px)'; t.style.transition='all 0.3s'; setTimeout(()=>t.remove(),300); }, 2800);
+function doLogout() {
+  if(confirm('Sign out?')) { S.fb.signOut(S.fb.auth); }
 }
-
-// ============================================================
-// BIND ALL
-// ============================================================
-function bindAll() {
-  // Close notif panel on outside click
-  document.addEventListener('click', function handler(e) {
-    const panel = document.getElementById('notifPanel');
-    if (panel && !panel.contains(e.target) && !e.target.closest('.btn-icon')) {
-      if (State.notifOpen) { State.notifOpen = false; render(); }
-    }
-    document.removeEventListener('click', handler);
-  });
-}
-
-// ============================================================
-// INIT
-// ============================================================
-State.load();
-render();
-
-// Notification checker
-setInterval(() => {
-  const overdueCount = State.tasks.filter(t => State.getEffectiveStatus(t) === 'overdue' && t.status !== 'completed').length;
-  if (overdueCount > 0 && !State.notifications.some(n => n.title === 'Overdue alert' && !n.read)) {
-    State.notifications.unshift({ id:uid(), title:'Overdue alert', text:`You have ${overdueCount} overdue task${overdueCount>1?'s':''}`, time:now(), read:false });
-    State.save();
-  }
-}, 60000);
 </script>
 </body>
 </html>
