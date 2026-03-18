@@ -36,7 +36,7 @@ const db   = getFirestore(app);
 // ── ADMIN UID — fill in after first login ─────────────
 // After you sign up for the first time, open browser console,
 // type: firebase.auth().currentUser.uid  and paste it below.
-const ADMIN_UID = "REPLACE_AFTER_FIRST_LOGIN";
+const ADMIN_UID = "vQkBmzUGY2b6B2tIN0K0BMGA2ll2";
 // ─────────────────────────────────────────────────────
 
 // ── SHARE TOKEN (any random string you choose) ────────
@@ -496,11 +496,11 @@ waitForFb(fb => {
 
   // Admin auth flow
   fb.onAuthStateChanged(fb.auth, user => {
-    if (user && (fb.ADMIN_UID === 'REPLACE_AFTER_FIRST_LOGIN' || user.uid === fb.ADMIN_UID)) {
+    if (user && (fb.ADMIN_UID === 'vQkBmzUGY2b6B2tIN0K0BMGA2ll2' || user.uid === fb.ADMIN_UID)) {
       S.user = user;
       S.isAdmin = true;
       // First-time setup: show UID banner if not yet configured
-      if (fb.ADMIN_UID === 'REPLACE_AFTER_FIRST_LOGIN') {
+      if (fb.ADMIN_UID === 'vQkBmzUGY2b6B2tIN0K0BMGA2ll2') {
         root().innerHTML = renderUidBanner(user.uid);
         return;
       }
@@ -620,7 +620,7 @@ function renderUidBanner(uid) {
       </div>
       <div style="font-size:13px;color:var(--text2);line-height:2">
         <strong style="color:var(--text)">Step 1:</strong> Go to <strong>github.com/bizdevcashkaro-creator/taskflow</strong><br>
-        <strong style="color:var(--text)">Step 2:</strong> Edit index.html → find <code style="background:var(--bg3);padding:2px 6px;border-radius:4px">REPLACE_AFTER_FIRST_LOGIN</code> → replace with your UID above<br>
+        <strong style="color:var(--text)">Step 2:</strong> Edit index.html → find <code style="background:var(--bg3);padding:2px 6px;border-radius:4px">vQkBmzUGY2b6B2tIN0K0BMGA2ll2</code> → replace with your UID above<br>
         <strong style="color:var(--text)">Step 3:</strong> Commit changes → wait 1 min → refresh this page
       </div>
     </div>
