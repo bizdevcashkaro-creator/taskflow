@@ -467,11 +467,8 @@ const isCollabLink = !!(urlShare);
 waitForFb(fb => {
   S.fb = fb;
 
-  // Check if config is still placeholder
-  if (fb.ADMIN_UID === 'REPLACE_AFTER_FIRST_LOGIN') {
-    root().innerHTML = renderSetupGuide();
-    return;
-  }
+  // Config is filled - proceed to auth
+  // (Admin UID will be set after first login)
 
   // Collab link flow — no auth needed
   if (isCollabLink) {
@@ -499,12 +496,16 @@ waitForFb(fb => {
 
   // Admin auth flow
   fb.onAuthStateChanged(fb.auth, user => {
-    if (user && user.uid === fb.ADMIN_UID) {
+    if (user && (fb.ADMIN_UID === 'REPLACE_AFTER_FIRST_LOGIN' || user.uid === fb.ADMIN_UID)) {
       S.user = user;
       S.isAdmin = true;
+      // First-time setup: show UID banner if not yet configured
+      if (fb.ADMIN_UID === 'REPLACE_AFTER_FIRST_LOGIN') {
+        root().innerHTML = renderUidBanner(user.uid);
+        return;
+      }
       startAdminApp();
     } else if (user) {
-      // Signed in but not admin — sign out
       fb.signOut(fb.auth);
       root().innerHTML = renderLogin('Not authorised. Only the admin can sign in here.');
       bindLogin();
@@ -589,6 +590,38 @@ service cloud.firestore {
   }
 }</pre>
         For now leave as test mode (allows all reads/writes for 30 days — fine to start).</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+
+// ============================================================
+// UID BANNER — shown on first login before ADMIN_UID is set
+// ============================================================
+function renderUidBanner(uid) {
+  return `
+  <div class="loading-screen" style="padding:40px;max-width:560px;margin:auto;align-items:flex-start">
+    <div style="width:100%">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px">
+        <div class="logo-mark" style="width:40px;height:40px;font-size:18px">T</div>
+        <div style="font-size:20px;font-weight:700">🎉 Almost there! One last step.</div>
+      </div>
+      <div style="background:var(--green-bg);border:1px solid var(--green);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:20px;color:var(--green);font-size:13px">
+        ✓ You are signed in. Now lock the app to your account only.
+      </div>
+      <div style="font-size:13px;color:var(--text2);line-height:1.8;margin-bottom:16px">
+        Your Admin UID is shown below. Copy it, then follow the 3 steps to finish setup.
+      </div>
+      <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:20px">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:8px;letter-spacing:1px">YOUR ADMIN UID</div>
+        <div style="font-family:'DM Mono',monospace;font-size:13px;color:var(--accent2);word-break:break-all;margin-bottom:10px">${uid}</div>
+        <button class="btn-primary" onclick="navigator.clipboard.writeText('${uid}').then(()=>toast('UID copied!','success'))">Copy UID</button>
+      </div>
+      <div style="font-size:13px;color:var(--text2);line-height:2">
+        <strong style="color:var(--text)">Step 1:</strong> Go to <strong>github.com/bizdevcashkaro-creator/taskflow</strong><br>
+        <strong style="color:var(--text)">Step 2:</strong> Edit index.html → find <code style="background:var(--bg3);padding:2px 6px;border-radius:4px">REPLACE_AFTER_FIRST_LOGIN</code> → replace with your UID above<br>
+        <strong style="color:var(--text)">Step 3:</strong> Commit changes → wait 1 min → refresh this page
       </div>
     </div>
   </div>`;
