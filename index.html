@@ -500,10 +500,6 @@ waitForFb(fb => {
       S.user = user;
       S.isAdmin = true;
       // First-time setup: show UID banner if not yet configured
-      if (fb.ADMIN_UID === 'vQkBmzUGY2b6B2tIN0K0BMGA2ll2') {
-        root().innerHTML = renderUidBanner(user.uid);
-        return;
-      }
       startAdminApp();
     } else if (user) {
       fb.signOut(fb.auth);
